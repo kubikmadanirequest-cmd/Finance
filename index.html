@@ -1,0 +1,2868 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FR Kubik Madani - Multi-Vault Financial System</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+    body { background-color: #f1f5f9; color: #1e293b; }
+    .bg-km-blue { background-color: #1e3a8a !important; }
+    .text-km-blue { color: #1e3a8a !important; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .nav-btn-active { background-color: #1e3a8a !important; color: #ffffff !important; font-weight: bold; }
+    
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    }
+  </style>
+</head>
+<body class="min-vh-100 d-flex flex-column pb-5">
+
+  <div id="loadingOverlay" class="d-none">
+    <div class="spinner-border text-warning mb-2" role="status" style="width: 3rem; height: 3rem;"></div>
+    <span class="text-white fw-bold small">Memproses Data...</span>
+  </div>
+
+  <!-- 1. HALAMAN LOGIN -->
+  <div id="loginScreenSection" class="login-container p-3">
+    <div class="card border-0 shadow-lg rounded-4 p-4 p-sm-5 bg-white" style="max-width: 420px; width: 100%;">
+      <div class="text-center mb-4">
+        <div class="bg-km-blue text-white fw-bold rounded-4 d-inline-flex align-items-center justify-content-center mb-2 shadow" style="width: 54px; height: 54px; font-size: 22px;">KM</div>
+        <h4 class="fw-bold text-dark mb-1">FR KUBIK MADANI</h4>
+        <small class="text-muted" style="font-size: 11px;">Sistem Keuangan Multi-Vault & Approval Hierarki</small>
+      </div>
+
+      <form id="formAppLogin" onsubmit="handleUserLogin(event)">
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-secondary mb-1">Email / Username *</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+            <input type="email" id="loginEmailInput" required placeholder="nama@kubikmadani.co.id" class="form-control form-control-sm py-2">
+          </div>
+        </div>
+
+       <div class="mb-4">
+  <label class="form-label small fw-bold text-secondary mb-1">Password *</label>
+  <div class="input-group input-group-sm">
+    <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+    <input type="password" id="loginPasswordInput" required placeholder="Masukkan password" class="form-control form-control-sm py-2">
+    <button class="btn btn-outline-secondary bg-light border-start-0" type="button" onclick="togglePasswordVisibility()" title="Lihat/Sembunyikan Password">
+      <i id="togglePasswordIcon" class="bi bi-eye"></i>
+    </button>
+  </div>
+</div>
+
+        <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Masuk ke Sistem
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. HALAMAN UTAMA APLIKASI -->
+  <div id="mainAppSection" class="d-none flex-column flex-grow-1">
+    <header class="bg-km-blue text-white shadow sticky-top py-2 px-3">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <div class="bg-white text-km-blue fw-black rounded-3 px-2 py-1 fs-6 fw-bold">KM</div>
+          <div>
+            <h1 class="fs-6 fw-bold mb-0 lh-1">FR KUBIK MADANI</h1>
+            <small id="envBadgeText" class="text-white-50" style="font-size: 10px;">Multi-Vault & Double-Entry Accounting Engine</small>
+          </div>
+        </div>
+        
+        <div class="d-flex align-items-center gap-2">
+          <div class="d-none d-sm-block text-end">
+            <div id="userNameDisplay" class="fw-bold small lh-1">-</div>
+            <small id="userRoleDisplay" class="text-white-50" style="font-size: 10px;">-</small>
+          </div>
+
+          <!-- Dropdown Switch Role Simulasi (Hanya muncul jika Role AS) -->
+          <select id="roleSimulatorSelector" onchange="switchRoleSimulation(this.value)" class="form-select form-select-sm bg-primary text-warning fw-bold border-0 shadow-sm d-none" style="width: auto;">
+            <option value="AS" selected>AS (Super Admin)</option>
+            <option value="RPM">RPM (Regional PM)</option>
+            <option value="PM">PM (Project Manager)</option>
+            <option value="PD">PD (Project Director)</option>
+            <option value="HD1">HD1 (Head Divisi 1)</option>
+            <option value="HD2">HD2 (Head Divisi 2)</option>
+            <option value="HD3">HD3 (Head Divisi 3)</option>
+            <option value="M">M (Manager Ops)</option>
+            <option value="APC">APC (Admin Petty Cash)</option>
+            <option value="D">D (Direktur Utama)</option>
+            <option value="FM">FM (Finance Manager)</option>
+            <option value="FA">FA (Finance Admin)</option>
+          </select>
+
+          <button onclick="handleUserLogout()" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1 py-1 px-2" title="Keluar Akun">
+            <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Logout</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="container-fluid px-3 mt-3 flex-grow-1">
+      
+      <div id="roleContextBanner" class="bg-dark text-white p-3 rounded-3 shadow-sm mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 border border-secondary">
+        <div class="d-flex align-items-center gap-3">
+          <div id="roleBannerAvatar" class="bg-warning text-dark fw-bold rounded-3 d-flex align-items-center justify-center fs-5" style="width: 42px; height: 42px;">-</div>
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h6 id="roleBannerName" class="mb-0 fw-bold">-</h6>
+              <span id="roleBannerPill" class="badge bg-warning text-dark">-</span>
+            </div>
+            <small id="roleBannerDesc" class="text-white-50" style="font-size: 11px;">Akses Penuh: Manajemen Master User, Setup Kas, dan Monitoring Semua Alur</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-4 col-lg-3">
+          <div class="card border-0 shadow-sm rounded-3 p-3 sticky-top" style="top: 75px;">
+            <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
+              <span class="text-muted fw-bold" style="font-size: 11px;">NAVIGASI UTAMA</span>
+              <span id="sidebarRolePill" class="badge bg-primary">-</span>
+            </div>
+            <div id="desktopNavLinks" class="d-flex flex-column gap-1"></div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-8 col-lg-9">
+          <div class="card border-0 shadow-sm rounded-3 p-3 p-sm-4 min-vh-50">
+            <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+              <div>
+                <h5 id="pageMainTitle" class="fw-bold text-dark mb-0 fs-6 fs-sm-5">Dashboard</h5>
+                <small id="pageMainSubtitle" class="text-muted">-</small>
+              </div>
+              <button onclick="refreshCurrentPage()" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" title="Muat Ulang Data">
+                <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-sm-inline">Refresh</span>
+              </button>
+            </div>
+
+            <div id="appDynamicContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    var REGIONAL_HIERARCHY = {
+      "Jabodetabek": ["Seluruh Jabodetabek", "Jakarta Pusat", "Jakarta Barat", "Jakarta Selatan", "Jakarta Timur", "Jakarta Utara", "Bogor", "Depok", "Tangerang", "Bekasi"],
+      "Kalimantan": ["Seluruh Kalimantan", "Kalbar", "Kalteng", "Kalsel", "Kaltara", "Kaltim"],
+      "Sulawesi": ["Seluruh Sulawesi", "Sulteng", "Sultra", "Sulut", "Sulsel", "Sulbar", "Gorontalo"],
+      "Jawa": ["Seluruh Jawa", "EJ (Jatim)", "WJ (Jabar)", "CJ (Jateng)", "DIY", "Banten"],
+      "Sumatera": ["Seluruh Sumatera", "Sumbagut", "Sumbagteng", "Sumbagsel", "Sumbar", "Aceh", "Lampung"],
+      "Pusat / Kantor Pusat": ["Pusat (Head Quarter)"]
+    };
+
+    var currentUser = null;
+    var currentPage = 'dashboard';
+    var isRoleSimulationActive = false;
+
+    var db = {
+      saldo: { saldoBesar: 250000000, saldoKecilA: 15000000, saldoKecilB: 12000000, saldoKecilC: 8000000, saldoKecilD: 5000000 },
+      poList: [],
+      sowList: [],
+      costCatalog: [],
+      costCategories: ["Transport & BBM Lapangan", "Akomodasi & Meal (OHS)", "Material & Consumables", "Operasional Kantor / ATK", "Kas Advance / Petty Cash"],
+      list: [],
+      invoicesList: [],
+      usersList: [],
+      utangPiutangList: [],
+      kasbonList: []
+    };
+
+    function startLoading() {
+      var el = document.getElementById("loadingOverlay");
+      if (el) el.classList.remove("d-none");
+    }
+    function endLoading() {
+      var el = document.getElementById("loadingOverlay");
+      if (el) el.classList.add("d-none");
+    }
+
+    function handleUserLogin(e) {
+      e.preventDefault();
+      startLoading();
+
+      var emailVal = document.getElementById("loginEmailInput").value.trim();
+      var passVal = document.getElementById("loginPasswordInput").value.trim();
+
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            endLoading();
+            if (res && res.success) {
+              currentUser = res.user;
+              onLoginSuccess();
+            } else {
+              Swal.fire('Login Gagal', res ? res.message : 'Kredensial tidak valid.', 'error');
+            }
+          })
+          .withFailureHandler(function(err) {
+            endLoading();
+            Swal.fire('Error Server', err.message, 'error');
+          })
+          .authenticateUser(emailVal, passVal);
+      } else {
+        endLoading();
+        currentUser = {
+          userId: "USR-01",
+          nama: emailVal.indexOf("rpm") > -1 ? "Budi Santoso" : "Super Admin",
+          email: emailVal,
+          role: emailVal.indexOf("rpm") > -1 ? "RPM" : "AS",
+          regional: "Jabodetabek",
+          subRegional: "Pusat",
+          project: "ZTE",
+          divisi: "Operations"
+        };
+        onLoginSuccess();
+      }
+    }
+
+    function onLoginSuccess() {
+      document.getElementById("loginScreenSection").classList.add("d-none");
+      document.getElementById("mainAppSection").classList.remove("d-none");
+      document.getElementById("mainAppSection").classList.add("d-flex");
+
+      updateUserBadge();
+
+      if (currentUser.role === 'RPM') {
+        currentPage = 'rf_rpm';
+      } else {
+        currentPage = 'dashboard';
+      }
+
+      renderNavMenu();
+      loadPage(currentPage);
+      loadAllData();
+      showToast('success', 'Selamat datang, ' + currentUser.nama);
+    }
+
+    function handleUserLogout() {
+      Swal.fire({
+        title: 'Konfirmasi Logout',
+        text: 'Apakah Anda yakin ingin keluar dari sistem?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Logout',
+        cancelButtonText: 'Batal'
+      }).then(function(res) {
+        if (res.isConfirmed) {
+          currentUser = null;
+          document.getElementById("formAppLogin").reset();
+          document.getElementById("mainAppSection").classList.add("d-none");
+          document.getElementById("mainAppSection").classList.remove("d-flex");
+          document.getElementById("loginScreenSection").classList.remove("d-none");
+        }
+      });
+    }
+
+    function switchRoleSimulation(selectedRole) {
+      if (currentUser.role !== 'AS' && !isRoleSimulationActive) return;
+      isRoleSimulationActive = true;
+      currentUser.role = selectedRole;
+
+      if (selectedRole === 'RPM') {
+        currentUser.email = "budi.rpm@kubikmadani.co.id"; currentUser.nama = "Budi Santoso"; currentUser.regional = "Jabodetabek"; currentUser.project = "ZTE";
+        currentPage = 'rf_rpm';
+      } else if (selectedRole === 'PM') {
+        currentUser.email = "pm.telco@kubikmadani.co.id"; currentUser.nama = "Hendra Pratama"; currentUser.regional = "Pusat";
+        currentPage = 'approval_box';
+      } else if (['PD', 'M', 'D', 'FM', 'HD1', 'HD2', 'HD3'].includes(selectedRole)) {
+        currentUser.email = selectedRole.toLowerCase() + "@kubikmadani.co.id"; currentUser.nama = "Verifikator " + selectedRole;
+        currentPage = 'approval_box';
+      } else if (selectedRole === 'FA') {
+        currentUser.email = "finance.adm@kubikmadani.co.id"; currentUser.nama = "Rina Finance (FA)";
+        currentPage = 'approval_box';
+      } else {
+        currentUser.email = "admin.super@kubikmadani.co.id"; currentUser.nama = "Super Admin";
+        currentPage = 'dashboard';
+      }
+
+      updateUserBadge();
+      renderNavMenu();
+      loadPage(currentPage);
+      showToast('info', 'Beralih Simulasi Peran: ' + selectedRole);
+    }
+
+    function updateUserBadge() {
+      if (!currentUser) return;
+      var nameEl = document.getElementById("userNameDisplay");
+      var roleEl = document.getElementById("userRoleDisplay");
+      var simEl = document.getElementById("roleSimulatorSelector");
+      var pillEl = document.getElementById("sidebarRolePill");
+      var bName = document.getElementById("roleBannerName");
+      var bPill = document.getElementById("roleBannerPill");
+      var bAvatar = document.getElementById("roleBannerAvatar");
+
+      if (nameEl) nameEl.innerText = currentUser.nama;
+      if (roleEl) roleEl.innerText = currentUser.role + " - " + (currentUser.regional || currentUser.divisi || "Pusat");
+      if (pillEl) pillEl.innerText = currentUser.role;
+      if (bName) bName.innerText = currentUser.nama;
+      if (bPill) bPill.innerText = currentUser.role + " (" + (currentUser.project || currentUser.divisi || "Pusat") + ")";
+      if (bAvatar) bAvatar.innerText = currentUser.role.substring(0, 3);
+
+      if (simEl) {
+        simEl.value = currentUser.role;
+        if (currentUser.role === 'AS') {
+          simEl.classList.remove('d-none');
+        } else {
+          simEl.classList.add('d-none');
+        }
+      }
+    }
+
+    function renderNavMenu() {
+      if (!currentUser) return;
+      var role = currentUser.role;
+      var userEmail = String(currentUser.email || '').trim().toLowerCase();
+      var userName = String(currentUser.nama || '').trim().toLowerCase();
+      var desktopNav = document.getElementById("desktopNavLinks");
+      if (!desktopNav) return;
+
+      var listArr = Array.isArray(db.list) ? db.list : [];
+
+      var hasSubmittedRF = false;
+      for (var u = 0; u < listArr.length; u++) {
+        var row = listArr[u];
+        if (!row) continue;
+        var rEmail = String(row.email || '').trim().toLowerCase();
+        var rPic = String(row.picPenerima || '').trim().toLowerCase();
+        if ((rEmail && rEmail === userEmail) || (rPic && rPic === userName)) {
+          hasSubmittedRF = true;
+          break;
+        }
+      }
+      if (role === 'AS') hasSubmittedRF = true;
+
+      var approverRoles = ['PM', 'PD', 'HD1', 'HD2', 'HD3', 'M', 'APC', 'D', 'FM', 'FA', 'AS'];
+      var canViewStatusRequest = hasSubmittedRF || approverRoles.indexOf(role) > -1;
+
+      var menus = [];
+
+      if (role !== 'RPM') {
+        menus.push({ id: 'dashboard', label: 'Dashboard & LK', icon: 'bi-speedometer2' });
+      }
+
+      if (['RPM', 'APC', 'AS'].includes(role)) menus.push({ id: 'rf_rpm', label: 'Buat RF (RPM)', icon: 'bi-file-earmark-plus' });
+      if (['PM', 'HD1', 'HD2', 'HD3', 'M', 'APC', 'AS'].includes(role)) menus.push({ id: 'rf_general', label: 'Buat RF Operasional', icon: 'bi-receipt' });
+      if (['APC', 'AS'].includes(role)) menus.push({ id: 'rf2_apc', label: 'Isi Kas Kecil (RF2)', icon: 'bi-safe' });
+      if (['FA', 'AS'].includes(role)) menus.push({ id: 'invoice_mgmt', label: 'Invoice & Jadwal Kas', icon: 'bi-file-earmark-text' });
+      if (['FA', 'FM', 'AS'].includes(role)) menus.push({ id: 'utang_piutang', label: 'Utang & Piutang', icon: 'bi-cash-coin' });
+      if (['FA', 'FM', 'APC', 'AS'].includes(role)) menus.push({ id: 'kasbon_karyawan', label: 'Kasbon Karyawan', icon: 'bi-person-lines-fill' });
+
+      if (canViewStatusRequest) {
+        menus.push({ id: 'status_rf', label: 'Status Request', icon: 'bi-clock-history' });
+      }
+
+      if (hasSubmittedRF) {
+        menus.push({ id: 'rspf_form', label: 'Form Realisasi (RSPF)', icon: 'bi-card-checklist' });
+      }
+
+      if (role !== 'RPM') {
+        var pendingCount = 0;
+        for (var i = 0; i < listArr.length; i++) {
+          var itm = listArr[i];
+          if (!itm) continue;
+          var st = String(itm.status || '').trim();
+          if (role === 'PM' && st === 'Pending PM') pendingCount++;
+          else if (role === 'M' && st === 'Pending M') pendingCount++;
+          else if (role === 'PD' && st === 'Pending PD') pendingCount++;
+          else if (role === 'D' && st === 'Pending D') pendingCount++;
+          else if (role === 'FM' && st === 'Pending FM') pendingCount++;
+          else if (role === 'FA' && st === 'Pending FA') pendingCount++;
+          else if (role === 'AS' && st.indexOf('Pending') > -1) pendingCount++;
+        }
+
+        var labelText = 'Cek Approval';
+        if (pendingCount > 0) {
+          labelText += ' (' + pendingCount + ')';
+        }
+
+        menus.push({ 
+          id: 'approval_box', 
+          label: labelText, 
+          icon: 'bi-check-circle', 
+          badge: (pendingCount > 0)
+        });
+      }
+
+      if (role === 'AS') {
+        menus.push({ id: 'master_user', label: 'Manajemen User', icon: 'bi-people' });
+        menus.push({ id: 'master_data', label: 'Master Data & Saldo', icon: 'bi-database' });
+      }
+
+      var html = '';
+      for (var j = 0; j < menus.length; j++) {
+        var m = menus[j];
+        var btnClass = (currentPage === m.id) ? 'nav-btn-active' : 'btn-light';
+        var badgeHtml = m.badge ? '<span class="badge rounded-pill bg-success">!</span>' : '';
+        html += '<button onclick="loadPage(\'' + m.id + '\')" class="btn btn-sm text-start w-100 d-flex justify-content-between align-items-center py-2 ' + btnClass + '">';
+        html += '<div><i class="bi ' + m.icon + ' me-2"></i><span>' + m.label + '</span></div>';
+        html += badgeHtml;
+        html += '</button>';
+      }
+      desktopNav.innerHTML = html;
+    }
+
+    function loadPage(pageId) {
+      if (!currentUser) return;
+      currentPage = pageId;
+      renderNavMenu();
+      var content = document.getElementById("appDynamicContent");
+      var title = document.getElementById("pageMainTitle");
+      var subtitle = document.getElementById("pageMainSubtitle");
+
+      if (!content) return;
+
+      switch(pageId) {
+        case 'dashboard':
+          if (title) title.innerText = "Dashboard & Laporan Keuangan (LK)";
+          if (subtitle) subtitle.innerText = "Monitoring real-time saldo multi-kas dan Jurnal Mutasi";
+          renderDashboardPage(content);
+          break;
+        case 'rf_rpm':
+          if (title) title.innerText = "Request Form (RF) - Lapangan RPM";
+          if (subtitle) subtitle.innerText = "Pengajuan dana operasional Site ID beserta rincian teknis";
+          renderRFRPMPage(content);
+          break;
+        case 'rf_general':
+          if (title) title.innerText = "Request Form (RF) - Operasional";
+          if (subtitle) subtitle.innerText = "Pengajuan dana OPEX / CAPEX operasional divisi";
+          renderRFGeneralPage(content);
+          break;
+        case 'rf2_apc':
+          if (title) title.innerText = "Permohonan Isi Kas Kecil (RF2)";
+          if (subtitle) subtitle.innerText = "Pengajuan Top-Up Kas Kecil dari Kas Besar";
+          renderRF2APCPage(content);
+          break;
+        case 'invoice_mgmt':
+          if (title) title.innerText = "Manajemen Invoice & Jadwal Kas Masuk (FA)";
+          if (subtitle) subtitle.innerText = "Input tagihan invoice klien & pencairan termin ke Kas Besar";
+          renderInvoiceManagementPage(content);
+          break;
+        case 'kasbon_karyawan':
+          if (title) title.innerText = "Manajemen Kasbon & Pinjaman Karyawan";
+          if (subtitle) subtitle.innerText = "Pencairan kasbon multi-kas kecil & pemotongan cicilan gaji (1 s/d 12 bulan)";
+          renderKasbonPage(content);
+          break;
+        case 'utang_piutang':
+          if (title) title.innerText = "Buku Utang & Piutang Perusahaan";
+          if (subtitle) subtitle.innerText = (currentUser.role === 'FM') ? "Mode Monitoring (View Only)" : "Pengelolaan & Pelunasan Utang Vendor / Piutang Mitra";
+          renderUtangPiutangPage(content);
+          break;
+        case 'status_rf':
+          if (title) title.innerText = "Status Pelacakan Request (SR)";
+          if (subtitle) subtitle.innerText = "Riwayat pengajuan dan status persetujuan aktif";
+          renderStatusRequestPage(content);
+          break;
+        case 'rspf_form':
+          if (title) title.innerText = "Responsible Form (RSPF)";
+          if (subtitle) subtitle.innerText = "Pelaporan realisasi nota belanja riil & bukti transaksi";
+          renderRSPFPage(content);
+          break;
+        case 'approval_box':
+          if (title) title.innerText = "Panel Verifikasi & Approval";
+          if (subtitle) subtitle.innerText = "Antrean persetujuan & eksekusi pencairan role: " + currentUser.role;
+          renderApprovalPage(content);
+          break;
+        case 'master_user':
+          if (title) title.innerText = "Manajemen Pengguna & PIC Penerima (AS)";
+          if (subtitle) subtitle.innerText = "Pendaftaran akun karyawan dan hierarki";
+          renderUserManagementPage(content);
+          break;
+        case 'master_data':
+          if (title) title.innerText = "Master Data & Saldo Kas (AS)";
+          if (subtitle) subtitle.innerText = "Kelola Master SOW, PO, dan Setup Saldo Kas";
+          renderMasterDataPage(content);
+          break;
+        default:
+          renderDashboardPage(content);
+      }
+    }
+
+    function refreshCurrentPage() {
+      loadAllData();
+      showToast('success', 'Data diperbarui');
+    }
+
+    function parseCustomDate(dateStr) {
+      if (!dateStr || dateStr === '-') return null;
+      if (dateStr instanceof Date) return dateStr;
+      var parts = String(dateStr).trim().split('/');
+      if (parts.length === 3) {
+        var d = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var y = parseInt(parts[2], 10);
+        return new Date(y, m, d);
+      }
+      var isoParts = String(dateStr).trim().split('-');
+      if (isoParts.length === 3) {
+        var iy = parseInt(isoParts[0], 10);
+        var im = parseInt(isoParts[1], 10) - 1;
+        var id = parseInt(isoParts[2], 10);
+        return new Date(iy, im, id);
+      }
+      return null;
+    }
+
+    // --- VIEW: DASHBOARD (INVOICE DUAL-MONTH WITH CLIENT BREAKDOWN & GEMINI TUTORIAL) ---
+    function renderDashboardPage(container) {
+      if (!container) return;
+      var role = currentUser ? currentUser.role : 'AS';
+      var pos = db.poList || [];
+      var listData = Array.isArray(db.list) ? db.list : [];
+      var s = db.saldo || {};
+
+      // 1. REKAP KAS REAL-TIME
+      var showFullVaults = ['FA', 'APC', 'FM', 'D', 'AS'].indexOf(role) > -1;
+      var showSmallVaultsOnly = (role === 'PD');
+      var hasVaultSummary = showFullVaults || showSmallVaultsOnly;
+
+      var vaultSummaryHtml = '';
+
+      if (hasVaultSummary) {
+        var now = new Date();
+        var currentDay = now.getDay();
+        var distanceToMonday = (currentDay === 0 ? -6 : 1 - currentDay);
+        
+        var mondayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distanceToMonday, 0, 0, 0);
+        var monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+
+        var vaultsToDisplay = [];
+        if (showFullVaults) {
+          vaultsToDisplay = [
+            { key: 'Kas Besar', label: 'Kas Besar', saldo: Number(s.saldoBesar || 0), border: 'border-dark', badge: 'bg-dark text-white' },
+            { key: 'Kas Kecil A', label: 'Kas Kecil A', saldo: Number(s.saldoKecilA || 0), border: 'border-success', badge: 'bg-success text-white' },
+            { key: 'Kas Kecil B', label: 'Kas Kecil B', saldo: Number(s.saldoKecilB || 0), border: 'border-primary', badge: 'bg-primary text-white' },
+            { key: 'Kas Kecil C', label: 'Kas Kecil C', saldo: Number(s.saldoKecilC || 0), border: 'border-info', badge: 'bg-info text-dark' },
+            { key: 'Kas Kecil D', label: 'Kas Kecil D', saldo: Number(s.saldoKecilD || 0), border: 'border-danger', badge: 'bg-danger text-white' }
+          ];
+        } else if (showSmallVaultsOnly) {
+          vaultsToDisplay = [
+            { key: 'Kas Kecil A', label: 'Kas Kecil A', saldo: Number(s.saldoKecilA || 0), border: 'border-success', badge: 'bg-success text-white' },
+            { key: 'Kas Kecil B', label: 'Kas Kecil B', saldo: Number(s.saldoKecilB || 0), border: 'border-primary', badge: 'bg-primary text-white' },
+            { key: 'Kas Kecil C', label: 'Kas Kecil C', saldo: Number(s.saldoKecilC || 0), border: 'border-info', badge: 'bg-info text-dark' },
+            { key: 'Kas Kecil D', label: 'Kas Kecil D', saldo: Number(s.saldoKecilD || 0), border: 'border-danger', badge: 'bg-danger text-white' }
+          ];
+        }
+
+        var vaultStats = {};
+        for (var v = 0; v < vaultsToDisplay.length; v++) {
+          vaultStats[vaultsToDisplay[v].key] = { weekSpent: 0, monthSpent: 0 };
+        }
+
+        for (var i = 0; i < listData.length; i++) {
+          var tx = listData[i];
+          if (!tx || tx.status !== 'Transferred') continue;
+
+          var txVault = String(tx.sumberKas || '').trim();
+          if (vaultStats[txVault]) {
+            var txDate = parseCustomDate(tx.tglTransfer) || parseCustomDate(tx.tgl);
+            var creditVal = Number(tx.credit || tx.totalNilai || 0);
+
+            if (txDate) {
+              if (txDate >= mondayStart && txDate <= now) {
+                vaultStats[txVault].weekSpent += creditVal;
+              }
+              if (txDate >= monthStart && txDate <= now) {
+                vaultStats[txVault].monthSpent += creditVal;
+              }
+            }
+          }
+        }
+
+        var cardsVaultsHtml = '';
+        var colClass = showSmallVaultsOnly ? 'col-12 col-sm-6 col-lg-3' : 'col-12 col-sm-6 col-lg';
+        for (var k = 0; k < vaultsToDisplay.length; k++) {
+          var vInfo = vaultsToDisplay[k];
+          var stat = vaultStats[vInfo.key] || { weekSpent: 0, monthSpent: 0 };
+
+          cardsVaultsHtml += '<div class="' + colClass + '">' +
+            '<div class="card p-2.5 rounded-3 bg-white shadow-sm border ' + vInfo.border + ' border-opacity-50 h-100">' +
+              '<div class="d-flex justify-content-between align-items-center mb-1.5 pb-1 border-bottom">' +
+                '<span class="badge ' + vInfo.badge + ' fw-bold" style="font-size: 10px;">' + vInfo.label + '</span>' +
+                '<small class="text-muted" style="font-size: 9px;"><i class="bi bi-clock-history"></i> Real-Time</small>' +
+              '</div>' +
+              '<div class="mb-1.5">' +
+                '<small class="text-muted d-block" style="font-size: 10px;">Saldo Berjalan</small>' +
+                '<span class="fs-6 fw-extrabold text-primary">Rp ' + vInfo.saldo.toLocaleString('id-ID') + '</span>' +
+              '</div>' +
+              '<div class="pt-1.5 border-top d-flex flex-column gap-1" style="font-size: 10.5px;">' +
+                '<div class="d-flex justify-content-between align-items-center">' +
+                  '<span class="text-muted"><i class="bi bi-calendar-event me-1 text-primary"></i>Minggu Ini:</span>' +
+                  '<b class="text-danger">Rp ' + stat.weekSpent.toLocaleString('id-ID') + '</b>' +
+                '</div>' +
+                '<div class="d-flex justify-content-between align-items-center">' +
+                  '<span class="text-muted"><i class="bi bi-calendar3 me-1 text-primary"></i>Bulan Ini:</span>' +
+                  '<b class="text-danger">Rp ' + stat.monthSpent.toLocaleString('id-ID') + '</b>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }
+
+        vaultSummaryHtml = '<div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-light">' +
+          '<div class="d-flex justify-content-between align-items-center mb-2.5">' +
+            '<div class="d-flex align-items-center gap-2">' +
+              '<div class="bg-primary text-white p-1.5 rounded-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">' +
+                '<i class="bi bi-wallet2 fs-6"></i>' +
+              '</div>' +
+              '<div>' +
+                '<h6 class="fw-bold mb-0 text-dark">REKAPITULASI PENGELUARAN & SALDO KAS REAL-TIME</h6>' +
+                '<small class="text-muted" style="font-size: 11px;">Pengeluaran terhitung per Senin s/d saat ini & 1 s/d saat ini (' + role + ' View)</small>' +
+              '</div>' +
+            '</div>' +
+            '<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2.5 py-1" style="font-size: 10px;">' +
+              '<i class="bi bi-arrow-repeat me-1"></i> Live Active' +
+            '</span>' +
+          '</div>' +
+          '<div class="row g-2">' + cardsVaultsHtml + '</div>' +
+        '</div>';
+      }
+
+      // 2. KALKULASI INVOICE DUAL-MONTH (BULAN BERJALAN & BULAN DEPAN LENGKAP DENGAN GRAND TOTAL & RINCIAN PER KLIEN)
+      var nowD = new Date();
+      var mNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      
+      var curMIdx = nowD.getMonth();
+      var curYear = nowD.getFullYear();
+      var nextMIdx = (curMIdx + 1) % 12;
+      var nextYear = (curMIdx === 11) ? curYear + 1 : curYear;
+
+      var curMonthLabel = mNames[curMIdx] + " " + curYear;
+      var nextMonthLabel = mNames[nextMIdx] + " " + nextYear;
+
+      var curGrandTotal = 0, curInvCount = 0, curClientTotals = {};
+      var nextGrandTotal = 0, nextInvCount = 0, nextClientTotals = {};
+
+      var allInvoices = Array.isArray(db.invoicesList) ? db.invoicesList : [];
+
+      for (var ix = 0; ix < allInvoices.length; ix++) {
+        var invItem = allInvoices[ix];
+        if (!invItem) continue;
+        if (String(invItem.status || '').indexOf("Lunas") > -1) continue;
+
+        var jDate = parseCustomDate(invItem.jadwalMasukKas) || parseCustomDate(invItem.tglInvoice);
+        if (!jDate) continue;
+
+        var valNominal = Number(invItem.nilaiInvoice || 0);
+        var klienName = String(invItem.klienProject || 'Lain-lain').trim();
+
+        if (jDate.getMonth() === curMIdx && jDate.getFullYear() === curYear) {
+          curGrandTotal += valNominal;
+          curInvCount++;
+          curClientTotals[klienName] = (curClientTotals[klienName] || 0) + valNominal;
+        } else if (jDate.getMonth() === nextMIdx && jDate.getFullYear() === nextYear) {
+          nextGrandTotal += valNominal;
+          nextInvCount++;
+          nextClientTotals[klienName] = (nextClientTotals[klienName] || 0) + valNominal;
+        }
+      }
+
+      function buildClientBadges(clientMap) {
+        var keys = Object.keys(clientMap);
+        if (keys.length === 0) {
+          return '<span class="text-muted small fst-italic">Belum ada estimasi invoice klien.</span>';
+        }
+        var h = '';
+        for (var c = 0; c < keys.length; c++) {
+          var k = keys[c];
+          h += '<div class="d-flex justify-content-between align-items-center py-1 px-2 mb-1 bg-white rounded border border-light-subtle shadow-sm" style="font-size: 11px;">' +
+            '<span class="fw-bold text-dark"><i class="bi bi-building me-1 text-secondary"></i>' + k + '</span>' +
+            '<b class="text-primary">Rp ' + clientMap[k].toLocaleString('id-ID') + '</b>' +
+          '</div>';
+        }
+        return h;
+      }
+
+      var invoicePotentialHtml = 
+        '<div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white border border-primary border-opacity-25">' +
+          '<div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">' +
+            '<div class="d-flex align-items-center gap-2">' +
+              '<div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">' +
+                '<i class="bi bi-cash-coin fs-5"></i>' +
+              '</div>' +
+              '<div>' +
+                '<h6 class="fw-bold mb-0 text-dark">ESTIMASI KAS MASUK TERMIN INVOICE (BULAN BERJALAN & BULAN DEPAN)</h6>' +
+                '<small class="text-muted" style="font-size: 11px;">Grand Total & Perkiraan per Klien (ZTE, Huawei, Telkom Infra, dll.)</small>' +
+              '</div>' +
+            '</div>' +
+            '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2.5 py-1" style="font-size: 10.5px;">' +
+              '<i class="bi bi-calendar-check me-1"></i> Auto-Forecast' +
+            '</span>' +
+          '</div>' +
+
+          '<div class="row g-3">' +
+            // KOLOM BULAN BERJALAN
+            '<div class="col-12 col-md-6">' +
+              '<div class="p-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-50 h-100">' +
+                '<div class="d-flex justify-content-between align-items-start mb-2">' +
+                  '<div>' +
+                    '<span class="badge bg-primary text-white fw-bold px-2 py-1" style="font-size: 10px;"><i class="bi bi-calendar-event me-1"></i> BULAN BERJALAN</span>' +
+                    '<h6 class="fw-bold text-dark mt-1 mb-0">' + curMonthLabel + '</h6>' +
+                  '</div>' +
+                  '<span class="badge bg-white text-primary border shadow-sm" style="font-size: 10px;">' + curInvCount + ' Invoice</span>' +
+                '</div>' +
+                '<div class="mb-2 pb-2 border-bottom border-primary border-opacity-25">' +
+                  '<small class="text-muted d-block fw-bold" style="font-size: 10.5px;">Grand Total Estimasi (Semua Klien):</small>' +
+                  '<span class="fs-5 fw-extrabold text-primary">Rp ' + curGrandTotal.toLocaleString('id-ID') + '</span>' +
+                '</div>' +
+                '<div>' +
+                  '<small class="text-secondary fw-bold d-block mb-1.5" style="font-size: 10.5px;"><i class="bi bi-diagram-3 me-1"></i> Total Perkiraan per Klien:</small>' +
+                  buildClientBadges(curClientTotals) +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            // KOLOM 1 BULAN KE DEPAN
+            '<div class="col-12 col-md-6">' +
+              '<div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-50 h-100">' +
+                '<div class="d-flex justify-content-between align-items-start mb-2">' +
+                  '<div>' +
+                    '<span class="badge bg-success text-white fw-bold px-2 py-1" style="font-size: 10px;"><i class="bi bi-calendar-plus me-1"></i> 1 BULAN KE DEPAN</span>' +
+                    '<h6 class="fw-bold text-dark mt-1 mb-0">' + nextMonthLabel + '</h6>' +
+                  '</div>' +
+                  '<span class="badge bg-white text-success border shadow-sm" style="font-size: 10px;">' + nextInvCount + ' Invoice</span>' +
+                '</div>' +
+                '<div class="mb-2 pb-2 border-bottom border-success border-opacity-25">' +
+                  '<small class="text-muted d-block fw-bold" style="font-size: 10.5px;">Grand Total Estimasi (Semua Klien):</small>' +
+                  '<span class="fs-5 fw-extrabold text-success">Rp ' + nextGrandTotal.toLocaleString('id-ID') + '</span>' +
+                '</div>' +
+                '<div>' +
+                  '<small class="text-secondary fw-bold d-block mb-1.5" style="font-size: 10.5px;"><i class="bi bi-diagram-3 me-1"></i> Total Perkiraan per Klien:</small>' +
+                  buildClientBadges(nextClientTotals) +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      // 3. ASISTEN AI GEMINI TUTORIAL
+      var aiAssistantHtml = 
+        '<div class="card border-0 shadow-sm rounded-4 p-3 mb-4 text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-left: 5px solid #38bdf8 !important;">' +
+          '<div class="d-flex justify-content-between align-items-center mb-2">' +
+            '<div class="d-flex align-items-center gap-2">' +
+              '<div class="bg-primary bg-opacity-25 text-info p-1.5 rounded-3 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">' +
+                '<i class="bi bi-robot fs-5"></i>' +
+              '</div>' +
+              '<div>' +
+                '<h6 class="fw-bold mb-0 text-white"><span class="text-info">Tanya Gemini:</span> Tutorial Panduan Aplikasi</h6>' +
+                '<small class="text-white-50" style="font-size: 11px;">Tanyakan alur step-by-step apa pun dalam bahasa yang mudah dan ramah</small>' +
+              '</div>' +
+            '</div>' +
+            '<span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-50 px-2.5 py-1" style="font-size: 10px;">' +
+              '<i class="bi bi-stars me-1"></i> AI Assistant Ready' +
+            '</span>' +
+          '</div>' +
+
+          '<div class="d-flex flex-wrap gap-1.5 mb-2.5">' +
+            '<button onclick="askGeminiTutorial(\'cara_buat_rf\')" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1" style="font-size: 10.5px;"><i class="bi bi-question-circle me-1"></i> Cara Buat RF Lapangan</button>' +
+            '<button onclick="askGeminiTutorial(\'cara_approval\')" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1" style="font-size: 10.5px;"><i class="bi bi-question-circle me-1"></i> Alur Approval & Transfer</button>' +
+            '<button onclick="askGeminiTutorial(\'cara_rspf\')" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1" style="font-size: 10.5px;"><i class="bi bi-question-circle me-1"></i> Lapor Nota RSPF</button>' +
+            '<button onclick="askGeminiTutorial(\'cara_kasbon\')" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1" style="font-size: 10.5px;"><i class="bi bi-question-circle me-1"></i> Pengajuan & Bayar Kasbon</button>' +
+            '<button onclick="askGeminiTutorial(\'cara_export\')" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1" style="font-size: 10.5px;"><i class="bi bi-question-circle me-1"></i> Filter & Export Excel LK</button>' +
+          '</div>' +
+
+          '<div id="geminiChatBox" class="bg-black bg-opacity-40 p-3 rounded-3 border border-secondary border-opacity-25 custom-scrollbar mb-2 text-white-50 small" style="min-height: 80px; max-height: 200px; overflow-y: auto; font-size: 11.5px; line-height: 1.6;">' +
+            '<div class="d-flex align-items-start gap-2 text-light">' +
+              '<i class="bi bi-stars text-warning mt-0.5"></i>' +
+              '<div>Halo! Saya <b>AI Gemini Asisten FR Kubik Madani</b>. Butuh panduan langkah kerja atau bingung cara menggunakan menu aplikasi? Klik salah satu tombol di atas atau ketik pertanyaan Anda di bawah ini ya!</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<form onsubmit="sendGeminiChat(event)" class="d-flex gap-2">' +
+            '<input type="text" id="geminiChatInput" placeholder="Ketik pertanyaan tutorial (contoh: bagaimana cara potong gaji kasbon?)..." class="form-control form-control-sm bg-dark text-white border-secondary">' +
+            '<button type="submit" class="btn btn-sm btn-info text-dark fw-bold px-3 d-flex align-items-center gap-1">' +
+              '<i class="bi bi-send-fill"></i> <span class="d-none d-sm-inline">Tanya</span>' +
+            '</button>' +
+          '</form>' +
+        '</div>';
+
+      // 4. DROPDOWN PO & BARIS 17 KOLOM LK
+      var siteOptsHtml = '';
+      for (var p = 0; p < pos.length; p++) {
+        siteOptsHtml += '<option value="' + pos[p].siteId + '">' + pos[p].siteId + ' (' + pos[p].project + ')</option>';
+      }
+
+      var rowsHtml = '';
+      for (var j = 0; j < listData.length; j++) {
+        var txRow = listData[j];
+        if (!txRow) continue;
+
+        var debText = (Number(txRow.debit || 0) > 0) ? ('Rp ' + Number(txRow.debit).toLocaleString('id-ID')) : '-';
+        var creText = (Number(txRow.credit || 0) > 0) ? ('Rp ' + Number(txRow.credit).toLocaleString('id-ID')) : '-';
+        var feeText = (Number(txRow.biayaTrf || 0) > 0) ? ('Rp ' + Number(txRow.biayaTrf).toLocaleString('id-ID')) : '-';
+        var stClass = (txRow.status === 'Transferred') ? 'bg-success' : 'bg-warning text-dark';
+        
+        var lampiranHtml = (txRow.urlLampiran && txRow.urlLampiran !== '-') 
+          ? '<a href="' + txRow.urlLampiran + '" target="_blank" class="badge bg-primary text-decoration-none"><i class="bi bi-paperclip"></i> File</a>' 
+          : '-';
+
+        rowsHtml += '<tr>';
+        rowsHtml += '<td class="fw-bold text-primary">' + (txRow.noRF || '-') + '</td>';
+        rowsHtml += '<td>' + (txRow.tgl || '-') + '</td>';
+        rowsHtml += '<td class="text-success fw-bold">' + (txRow.tglTransfer || '-') + '</td>';
+        rowsHtml += '<td>' + (txRow.siteIds || '-') + '</td>';
+        rowsHtml += '<td>' + (txRow.sow2 || '-') + '</td>';
+        rowsHtml += '<td>' + (txRow.sow4 || '-') + '</td>';
+        rowsHtml += '<td class="fw-bold text-muted">' + (txRow.itemCode || '-') + '</td>';
+        rowsHtml += '<td><span class="badge bg-secondary">' + (txRow.kategori || 'OPEX') + '</span></td>';
+        rowsHtml += '<td><span class="badge bg-light text-dark border">' + (txRow.costCategory || '-') + '</span></td>';
+        rowsHtml += '<td>' + (txRow.costDetail || '-') + '</td>';
+        rowsHtml += '<td class="fw-bold">' + (txRow.picPenerima || '-') + '</td>';
+        rowsHtml += '<td class="text-end text-success fw-bold">' + debText + '</td>';
+        rowsHtml += '<td class="text-end text-danger fw-bold">' + creText + '</td>';
+        rowsHtml += '<td>' + (txRow.sumberKas || '-') + '</td>';
+        rowsHtml += '<td class="text-end text-muted">' + feeText + '</td>';
+        rowsHtml += '<td class="text-center"><span class="badge ' + stClass + '">' + (txRow.status || 'Pending') + '</span></td>';
+        rowsHtml += '<td class="text-center">' + lampiranHtml + '</td>';
+        rowsHtml += '<td class="text-end fw-bold text-primary bg-primary bg-opacity-10">Rp ' + Number(txRow.saldoKas || 0).toLocaleString('id-ID') + '</td>';
+        rowsHtml += '</tr>';
+      }
+
+      container.innerHTML = 
+        vaultSummaryHtml +
+        invoicePotentialHtml +
+        aiAssistantHtml +
+        '<div class="card border-0 shadow-sm rounded-4 p-3 p-sm-4 mb-4 text-white" style="background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%);">' +
+          '<div class="d-flex justify-content-between align-items-start mb-3">' +
+            '<div class="d-flex align-items-center gap-2">' +
+              '<div class="bg-warning text-dark p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">' +
+                '<i class="bi bi-broadcast fs-5"></i>' +
+              '</div>' +
+              '<div>' +
+                '<h6 class="fw-bold mb-0 text-white tracking-wide">MONITORING BUDGET PER SITE ID & PO LINE</h6>' +
+                '<small class="text-white-50" style="font-size: 11px;">Pilih Site ID untuk melihat rincian pagu, realisasi biaya, dan % penyerapan</small>' +
+              '</div>' +
+            '</div>' +
+            '<span class="badge bg-primary border border-primary-subtle text-white px-3 py-1.5 rounded-pill shadow-sm" style="font-size: 11px;">' +
+              '<i class="bi bi-lightning-charge-fill text-warning me-1"></i> Live Budget Engine' +
+            '</span>' +
+          '</div>' +
+
+          '<div class="row g-2 mb-3">' +
+            '<div class="col-12 col-sm-6">' +
+              '<label class="form-label text-white-50 small mb-1" style="font-size: 11px;">Pilih Site ID Target *</label>' +
+              '<select id="dashSiteSelector" onchange="onDashboardSiteChanged(this.value)" class="form-select form-select-sm bg-dark text-warning border-secondary fw-bold">' +
+                siteOptsHtml +
+              '</select>' +
+            '</div>' +
+            '<div class="col-12 col-sm-6">' +
+              '<label class="form-label text-white-50 small mb-1" style="font-size: 11px;">PO / PO Line Terdaftar</label>' +
+              '<div id="dashPOLineBox" class="form-control form-control-sm bg-dark text-white border-secondary fw-bold d-flex justify-content-between align-items-center">' +
+                '<span>-</span><span class="badge bg-secondary text-white">Pagu: Rp 0</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="card bg-black bg-opacity-25 border border-white border-opacity-10 p-3 rounded-3">' +
+            '<div class="row g-2 text-center text-sm-start">' +
+              '<div class="col-6 col-sm-3">' +
+                '<small class="text-white-50 d-block" style="font-size: 11px;">Pagu Budget PO</small>' +
+                '<span id="dashPaguDisplay" class="fs-6 fw-extrabold text-warning">Rp 0</span>' +
+              '</div>' +
+              '<div class="col-6 col-sm-3">' +
+                '<small class="text-white-50 d-block" style="font-size: 11px;">Total Cost Terpakai</small>' +
+                '<span id="dashCostDisplay" class="fs-6 fw-extrabold text-danger">Rp 0</span>' +
+              '</div>' +
+              '<div class="col-6 col-sm-3">' +
+                '<small class="text-white-50 d-block" style="font-size: 11px;">Sisa Anggaran</small>' +
+                '<span id="dashSisaDisplay" class="fs-6 fw-extrabold text-success">Rp 0</span>' +
+              '</div>' +
+              '<div class="col-6 col-sm-3">' +
+                '<small class="text-white-50 d-block" style="font-size: 11px;">Status</small>' +
+                '<span id="dashStatusBadge" class="badge bg-warning text-dark mt-1 px-2.5 py-1" style="font-size: 11px;">-</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="card border-0 shadow-sm rounded-3">' +
+          '<div class="card-header bg-light d-flex justify-content-between align-items-center py-2">' +
+            '<span class="fw-bold small text-dark"><i class="bi bi-journal-text me-1"></i> JURNAL TRANSAKSI & LK (17 KOLOM LENGKAP)</span>' +
+            '<div class="d-flex gap-2">' +
+              '<input type="text" id="tableSearchInput" onkeyup="filterLKTable()" placeholder="Cari data..." class="form-control form-control-sm" style="width: 140px;">' +
+              '<button onclick="exportLKToExcel()" class="btn btn-sm btn-success fw-bold" title="Export Excel LK"><i class="bi bi-file-earmark-excel me-1"></i> Export</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="table-responsive custom-scrollbar" style="max-height: 440px;">' +
+            '<table class="table table-sm table-hover text-nowrap align-middle mb-0" style="font-size: 11px;">' +
+              '<thead class="table-light sticky-top">' +
+                '<tr>' +
+                  '<th>No RF</th><th>Tgl Request</th><th>Tgl Transfer</th><th>Site ID / Kegiatan</th><th>SOW 2</th><th>SOW 4 / Rincian</th><th>Item Code</th><th>Kategori</th><th>Cost Category</th><th>Cost Detail</th><th>PIC Penerima</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th>Sumber Kas</th><th class="text-end">Biaya Trf</th><th class="text-center">Status</th><th class="text-center">Lampiran</th><th class="text-end bg-primary bg-opacity-10">Saldo Kas</th>' +
+                '</tr>' +
+              '</thead>' +
+              '<tbody id="lkTransactionsTableBody">' + rowsHtml + '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</div>';
+
+      if (pos.length > 0) {
+        onDashboardSiteChanged(pos[0].siteId);
+      }
+    }
+    function askGeminiTutorial(topicKey) {
+      var question = "";
+      if (topicKey === 'cara_buat_rf') question = "Bagaimana cara membuat Request Form (RF) untuk Site ID Lapangan?";
+      else if (topicKey === 'cara_approval') question = "Bagaimana alur persetujuan (approval) dan transfer pencairan dana?";
+      else if (topicKey === 'cara_rspf') question = "Bagaimana cara melaporkan realisasi nota riil di menu RSPF?";
+      else if (topicKey === 'cara_kasbon') question = "Bagaimana cara mencairkan kasbon dan memotong cicilan gaji karyawan?";
+      else if (topicKey === 'cara_export') question = "Bagaimana cara melakukan filter dan download export Excel Laporan Keuangan?";
+
+      executeGeminiChatResponse(question);
+    }
+
+    function sendGeminiChat(e) {
+      e.preventDefault();
+      var inputEl = document.getElementById("geminiChatInput");
+      if (!inputEl) return;
+      var q = inputEl.value.trim();
+      if (!q) return;
+      inputEl.value = "";
+      executeGeminiChatResponse(q);
+    }
+
+    function executeGeminiChatResponse(userQuery) {
+      var box = document.getElementById("geminiChatBox");
+      if (!box) return;
+
+      var userMsgHtml = '<div class="mb-2 text-end"><span class="badge bg-primary text-white p-2 rounded-3 text-start" style="font-size: 11px; max-width: 85%; white-space: normal;"><i class="bi bi-person-fill me-1"></i> ' + userQuery + '</span></div>';
+      box.innerHTML += userMsgHtml;
+
+      var answer = getGeminiTutorialResponse(userQuery);
+
+      setTimeout(function() {
+        var aiMsgHtml = '<div class="mb-2 text-start"><div class="p-2.5 rounded-3 bg-dark border border-info border-opacity-50 text-white" style="font-size: 11.5px; line-height: 1.6;">' +
+          '<div class="fw-bold text-info mb-1"><i class="bi bi-stars text-warning me-1"></i> Panduan Langkah Gemini:</div>' +
+          answer +
+        '</div></div>';
+        box.innerHTML += aiMsgHtml;
+        box.scrollTop = box.scrollHeight;
+      }, 300);
+    }
+
+    function getGeminiTutorialResponse(query) {
+      var q = query.toLowerCase();
+
+      if (q.indexOf("buat rf") > -1 || q.indexOf("lapangan") > -1 || q.indexOf("rpm") > -1 || q.indexOf("pengajuan") > -1) {
+        return "<b>Langkah Membuat RF Lapangan (RPM):</b><br>" +
+          "1. Buka menu <b>Buat RF (RPM)</b> di sidebar kiri.<br>" +
+          "2. Pilih <b>Site ID Target</b> (sistem otomatis menghitung frekuensi kunjungan/Visit Times).<br>" +
+          "3. Masukkan <b>Nominal Pengajuan (Rp)</b>.<br>" +
+          "4. Pilih <b>SOW 2</b>, <b>SOW 4 Activity</b>, dan sistem otomatis mengisi <b>Item Code</b>.<br>" +
+          "5. Pilih <b>Cost Category</b> dan <b>Cost Detail</b> (bisa tambah rincian baru).<br>" +
+          "6. Unggah dokumen pendukung (PDF/Foto nota/SPK) lalu klik tombol <b>Kirim Pengajuan RF</b>.<br>" +
+          "7. Dokumen akan langsung berstatus <i>Pending PM</i> dan terkirim otomatis ke grup Telegram.";
+      }
+
+      if (q.indexOf("approval") > -1 || q.indexOf("setuju") > -1 || q.indexOf("transfer") > -1) {
+        return "<b>Alur Approval & Transfer Pencairan:</b><br>" +
+          "1. <b>Hierarki Persetujuan:</b> RPM &rarr; PM &rarr; PD &rarr; FM &rarr; FA (Eksekusi Transfer).<br>" +
+          "2. Buka menu <b>Cek Approval</b> pada akun pejabat terkait.<br>" +
+          "3. Verifikator dapat menyetujui, menolak, atau <b>Meminta Revisi</b> dengan catatan perbaikan.<br>" +
+          "4. <b>Khusus FA (Finance Admin):</b> Pilih sumber kas, biaya transfer bank, unggah <b>Foto Bukti Transfer</b>, lalu klik <b>Eksekusi Transfer</b>.<br>" +
+          "5. Saldo kas otomatis terpotong dan status dokumen menjadi <i>Transferred</i> disertai notifikasi Telegram.";
+      }
+
+      if (q.indexOf("rspf") > -1 || q.indexOf("nota") > -1 || q.indexOf("realisasi") > -1) {
+        return "<b>Langkah Laporan Realisasi Belanja (RSPF):</b><br>" +
+          "1. Buka menu <b>Form Realisasi (RSPF)</b>.<br>" +
+          "2. Pilih <b>Nomor RF yang telah cair</b> di daftar dropdown.<br>" +
+          "3. Masukkan <b>Realisasi Riil (Rp)</b> yang dibelanjakan (sistem otomatis menghitung selisih Lebih/Kurang).<br>" +
+          "4. Unggah file berkas bukti terpadu (Foto Nota/Kuitansi/Bukti Refund).<br>" +
+          "5. Klik <b>Kirim Laporan Realisasi RSPF</b> untuk diverifikasi tim finance.";
+      }
+
+      if (q.indexOf("kasbon") > -1 || q.indexOf("pinjam") > -1 || q.indexOf("cicilan") > -1 || q.indexOf("gaji") > -1) {
+        return "<b>Panduan Kasbon Karyawan & Potong Gaji:</b><br>" +
+          "1. Buka menu <b>Kasbon Karyawan</b>.<br>" +
+          "2. Pilih <b>Nama Karyawan & User ID</b> dari daftar dropdown.<br>" +
+          "3. Masukkan <b>Jumlah Pinjaman (Rp)</b> dan pilih <b>Tenor Cicilan (1 s/d 12 Bulan)</b>.<br>" +
+          "4. Pilih kas pengirim, sistem otomatis menghitung cicilan per bulan.<br>" +
+          "5. Klik <b>Cairkan Kasbon Karyawan</b>.<br>" +
+          "6. Pada tabel riwayat, klik tombol <b>Bayar C1, Bayar C2, dst.</b> saat cicilan dipotong dari gaji.";
+      }
+
+      if (q.indexOf("export") > -1 || q.indexOf("excel") > -1 || q.indexOf("download") > -1 || q.indexOf("filter") > -1) {
+        return "<b>Langkah Filter & Download Excel Laporan Keuangan:</b><br>" +
+          "1. Pada halaman <b>Dashboard & LK</b>, scroll ke tabel 17 Kolom Jurnal Transaksi.<br>" +
+          "2. Klik tombol hijau <b>Export</b> di pojok kanan atas tabel.<br>" +
+          "3. Tentukan filter bulan, tahun, atau rentang tanggal spesifik.<br>" +
+          "4. Anda juga bisa memilih <b>Site ID spesifik</b> atau filter per <b>SOW 2</b>.<br>" +
+          "5. Klik <b>Download Excel</b> untuk mengunduh file <i>.xlsx</i>.";
+      }
+
+      return "Pertanyaan Anda: <i>\"" + query + "\"</i>.<br><br>" +
+        "<b>Panduan Ringkas:</b> Anda dapat mengoperasikan sistem ini melalui menu di sidebar:<br>" +
+        "&bull; <b>Dashboard & LK:</b> Pantau 5 Kas, Potensi Invoice Dual-Month, Budget Site ID, dan 17 Kolom LK.<br>" +
+        "&bull; <b>Buat RF:</b> Buat permohonan dana lapangan atau operasional kantor.<br>" +
+        "&bull; <b>Cek Approval:</b> Tinjau antrean persetujuan berjenjang, minta revisi, atau tolak.<br>" +
+        "&bull; <b>Kasbon:</b> Pinjaman karyawan dengan tenor potong gaji 1–12 bulan.<br>" +
+        "Silakan klik tombol pertanyaan cepat di atas untuk panduan yang lebih detail.";
+    }
+
+    function onDashboardSiteChanged(siteId) {
+      var poList = db.poList || [];
+      var poItem = null;
+      for (var i = 0; i < poList.length; i++) {
+        if (poList[i].siteId === siteId) {
+          poItem = poList[i];
+          break;
+        }
+      }
+
+      var lineBox = document.getElementById("dashPOLineBox");
+      var paguEl = document.getElementById("dashPaguDisplay");
+      var costEl = document.getElementById("dashCostDisplay");
+      var sisaEl = document.getElementById("dashSisaDisplay");
+      var statusBadge = document.getElementById("dashStatusBadge");
+
+      if (!poItem) {
+        if (lineBox) lineBox.innerHTML = '<span>-</span><span class="badge bg-secondary">Pagu: Rp 0</span>';
+        if (paguEl) paguEl.innerText = "Rp 0";
+        if (costEl) costEl.innerText = "Rp 0";
+        if (sisaEl) sisaEl.innerText = "Rp 0";
+        if (statusBadge) { statusBadge.innerText = "-"; statusBadge.className = "badge bg-secondary"; }
+        return;
+      }
+
+      var pagu = Number(poItem.budget) || 0;
+      var list = db.list || [];
+      var totalCost = 0;
+      for (var j = 0; j < list.length; j++) {
+        if (list[j] && list[j].siteIds === siteId) {
+          totalCost += Number(list[j].credit || list[j].totalNilai || 0);
+        }
+      }
+
+      var sisa = pagu - totalCost;
+      var pct = (pagu > 0) ? ((totalCost / pagu) * 100) : 0;
+
+      if (lineBox) {
+        lineBox.innerHTML = '<span>' + poItem.poNumber + ' &bull; ' + poItem.poLine + ' (' + poItem.project + ')</span>' +
+          '<span class="badge bg-warning text-dark">Pagu: Rp ' + pagu.toLocaleString('id-ID') + '</span>';
+      }
+      if (paguEl) paguEl.innerText = "Rp " + pagu.toLocaleString('id-ID');
+      if (costEl) costEl.innerText = "Rp " + totalCost.toLocaleString('id-ID');
+      if (sisaEl) {
+        sisaEl.innerText = "Rp " + sisa.toLocaleString('id-ID');
+        sisaEl.className = "fs-6 fw-extrabold " + (sisa < 0 ? "text-danger" : "text-success");
+      }
+
+      if (statusBadge) {
+        if (pct >= 100) {
+          statusBadge.innerText = pct.toFixed(1) + "% (OVER BUDGET)";
+          statusBadge.className = "badge bg-danger text-white mt-1 px-2.5 py-1";
+        } else if (pct >= 85) {
+          statusBadge.innerText = pct.toFixed(1) + "% (Mendekati Limit)";
+          statusBadge.className = "badge bg-warning text-dark mt-1 px-2.5 py-1";
+        } else {
+          statusBadge.innerText = pct.toFixed(1) + "% (Aman / Normal)";
+          statusBadge.className = "badge bg-success text-white mt-1 px-2.5 py-1";
+        }
+      }
+    }
+
+    function filterLKTable() {
+      var input = document.getElementById("tableSearchInput").value.toUpperCase();
+      var rows = document.querySelectorAll("#lkTransactionsTableBody tr");
+      for (var i = 0; i < rows.length; i++) {
+        rows[i].style.display = rows[i].innerText.toUpperCase().indexOf(input) > -1 ? "" : "none";
+      }
+    }
+
+    function exportLKToExcel() {
+      var listData = Array.isArray(db.list) ? db.list : [];
+      if (listData.length === 0) {
+        Swal.fire('Info', 'Tidak ada data transaksi untuk diekspor.', 'info');
+        return;
+      }
+
+      var pos = db.poList || [];
+      var sows = db.sowList || [];
+
+      var siteSet = {};
+      for (var p = 0; p < pos.length; p++) {
+        if (pos[p].siteId && pos[p].siteId !== '-') siteSet[pos[p].siteId] = true;
+      }
+      for (var l = 0; l < listData.length; l++) {
+        if (listData[l].siteIds && listData[l].siteIds !== '-') siteSet[listData[l].siteIds] = true;
+      }
+      var siteKeys = Object.keys(siteSet);
+      var siteOptsHtml = '<option value="ALL">-- Semua Site ID --</option>';
+      for (var s = 0; s < siteKeys.length; s++) {
+        siteOptsHtml += '<option value="' + siteKeys[s] + '">' + siteKeys[s] + '</option>';
+      }
+
+      var sow2Set = {};
+      for (var sw = 0; sw < sows.length; sw++) {
+        if (sows[sw].sow2 && sows[sw].sow2 !== '-') sow2Set[sows[sw].sow2] = true;
+      }
+      for (var lx = 0; lx < listData.length; lx++) {
+        if (listData[lx].sow2 && listData[lx].sow2 !== '-') sow2Set[listData[lx].sow2] = true;
+      }
+      var sow2Keys = Object.keys(sow2Set);
+      var sow2OptsHtml = '<option value="ALL">-- Semua SOW 2 --</option>';
+      for (var k = 0; k < sow2Keys.length; k++) {
+        sow2OptsHtml += '<option value="' + sow2Keys[k] + '">' + sow2Keys[k] + '</option>';
+      }
+
+      var currentYear = new Date().getFullYear();
+      var filterModalHtml = 
+        '<div class="text-start" style="font-size: 12px;">' +
+          '<div class="mb-2 p-2 bg-light rounded border">' +
+            '<label class="fw-bold text-dark mb-1 d-block"><i class="bi bi-calendar-range me-1 text-primary"></i> 1. Filter Waktu</label>' +
+            '<div class="row g-2 mb-1.5">' +
+              '<div class="col-6">' +
+                '<small class="text-muted d-block">Pilihan Bulan:</small>' +
+                '<select id="expMonth" class="form-select form-select-sm">' +
+                  '<option value="ALL">Semua Bulan</option>' +
+                  '<option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>' +
+                  '<option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>' +
+                  '<option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>' +
+                  '<option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>' +
+                '</select>' +
+              '</div>' +
+              '<div class="col-6">' +
+                '<small class="text-muted d-block">Pilihan Tahun:</small>' +
+                '<input type="number" id="expYear" value="' + currentYear + '" class="form-control form-control-sm">' +
+              '</div>' +
+            '</div>' +
+            '<div class="row g-2 pt-1 border-top">' +
+              '<div class="col-6">' +
+                '<small class="text-muted d-block">Rentang Dari:</small>' +
+                '<input type="date" id="expStartDate" class="form-control form-control-sm">' +
+              '</div>' +
+              '<div class="col-6">' +
+                '<small class="text-muted d-block">Hingga Tanggal:</small>' +
+                '<input type="date" id="expEndDate" class="form-control form-control-sm">' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="mb-2 p-2 bg-light rounded border">' +
+            '<label class="fw-bold text-dark mb-1 d-block"><i class="bi bi-geo-alt me-1 text-danger"></i> 2. Filter Site ID Tertentu</label>' +
+            '<select id="expSiteSelector" class="form-select form-select-sm">' + siteOptsHtml + '</select>' +
+          '</div>' +
+          '<div class="p-2 bg-light rounded border">' +
+            '<label class="fw-bold text-dark mb-1 d-block"><i class="bi bi-layers me-1 text-primary"></i> 3. Filter SOW 2 Tertentu</label>' +
+            '<select id="expSow2Selector" class="form-select form-select-sm">' + sow2OptsHtml + '</select>' +
+          '</div>' +
+        '</div>';
+
+      Swal.fire({
+        title: 'Filter & Export Excel Jurnal LK',
+        html: filterModalHtml,
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-file-earmark-excel me-1"></i> Download Excel',
+        cancelButtonText: 'Batal',
+        customClass: { confirmButton: 'btn btn-success fw-bold px-3', cancelButton: 'btn btn-secondary px-3' },
+        focusConfirm: false,
+        preConfirm: function() {
+          return {
+            month: document.getElementById('expMonth').value,
+            year: document.getElementById('expYear').value,
+            startDate: document.getElementById('expStartDate').value,
+            endDate: document.getElementById('expEndDate').value,
+            siteId: document.getElementById('expSiteSelector').value,
+            sow2: document.getElementById('expSow2Selector').value
+          };
+        }
+      }).then(function(result) {
+        if (result.isConfirmed && result.value) {
+          executeFilteredExport(result.value);
+        }
+      });
+    }
+
+    function executeFilteredExport(filter) {
+      var listData = Array.isArray(db.list) ? db.list : [];
+      var poList = Array.isArray(db.poList) ? db.poList : [];
+
+      var customStart = filter.startDate ? new Date(filter.startDate + "T00:00:00") : null;
+      var customEnd = filter.endDate ? new Date(filter.endDate + "T23:59:59") : null;
+      var targetMonth = filter.month;
+      var targetYear = filter.year ? parseInt(filter.year, 10) : null;
+      var targetSite = String(filter.siteId || 'ALL').trim().toUpperCase();
+      var targetSow2 = String(filter.sow2 || 'ALL').trim().toUpperCase();
+
+      var exportRows = [];
+
+      for (var i = 0; i < listData.length; i++) {
+        var tx = listData[i];
+        if (!tx) continue;
+
+        var txDate = parseCustomDate(tx.tglTransfer) || parseCustomDate(tx.tgl);
+        var rowSite = String(tx.siteIds || '').trim().toUpperCase();
+        var rowSow2 = String(tx.sow2 || '').trim().toUpperCase();
+
+        if (customStart && customEnd) {
+          if (!txDate || txDate < customStart || txDate > customEnd) continue;
+        } else if (txDate) {
+          if (targetMonth !== "ALL" && (txDate.getMonth() + 1) !== parseInt(targetMonth, 10)) continue;
+          if (targetYear && txDate.getFullYear() !== targetYear) continue;
+        }
+
+        if (targetSite !== "ALL" && rowSite !== targetSite) continue;
+        if (targetSow2 !== "ALL" && rowSow2 !== targetSow2) continue;
+
+        var poItem = null;
+        for (var p = 0; p < poList.length; p++) {
+          var pSite = String(poList[p].siteId || '').trim().toUpperCase();
+          if (pSite === rowSite) {
+            poItem = poList[p];
+            break;
+          }
+        }
+
+        var paguPO = poItem ? Number(poItem.budget || 0) : 0;
+        var creditVal = Number(tx.credit || tx.totalNilai || 0);
+        var pctPoSpent = (paguPO > 0) ? ((creditVal / paguPO) * 100).toFixed(2) + "%" : "-";
+
+        exportRows.push({
+          "No RF": tx.noRF || "-",
+          "Tgl Request": tx.tgl || "-",
+          "Tgl Transfer": tx.tglTransfer || "-",
+          "Site ID / Kegiatan": tx.siteIds || "-",
+          "SOW 2": tx.sow2 || "-",
+          "SOW 4 / Rincian": tx.sow4 || "-",
+          "Item Code": tx.itemCode || "-",
+          "Kategori": tx.kategori || "OPEX",
+          "Cost Category": tx.costCategory || "-",
+          "Cost Detail": tx.costDetail || "-",
+          "PIC Penerima": tx.picPenerima || "-",
+          "Debit (Rp)": Number(tx.debit || 0),
+          "Credit (Rp)": creditVal,
+          "Sumber Kas": tx.sumberKas || "-",
+          "Biaya Transfer (Rp)": Number(tx.biayaTrf || 0),
+          "Status": tx.status || "-",
+          "Pagu Budget PO (Rp)": paguPO > 0 ? paguPO : "-",
+          "% Terhadap Budget PO": pctPoSpent,
+          "Saldo Kas Berjalan (Rp)": Number(tx.saldoKas || 0)
+        });
+      }
+
+      if (exportRows.length === 0) {
+        Swal.fire('Info', 'Tidak ditemukan data transaksi yang sesuai filter.', 'warning');
+        return;
+      }
+
+      var ws = XLSX.utils.json_to_sheet(exportRows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Jurnal_LK_Filtered");
+
+      var fileName = "LK_Export_" + (targetSite !== "ALL" ? targetSite + "_" : "") + (new Date().getTime()) + ".xlsx";
+      XLSX.writeFile(wb, fileName);
+
+      showToast('success', exportRows.length + ' data diekspor ke Excel!');
+    }
+
+    function renderRFRPMPage(container, prefillData) {
+      if (!container) return;
+      var pos = db.poList || [];
+      var sitesHtml = '';
+      for (var i = 0; i < pos.length; i++) {
+        var isSelSite = prefillData && prefillData.siteIds === pos[i].siteId ? 'selected' : '';
+        sitesHtml += '<option value="' + pos[i].siteId + '" ' + isSelSite + '>' + pos[i].siteId + ' &bull; ' + pos[i].poNumber + ' (' + pos[i].project + ')</option>';
+      }
+
+      var sows = db.sowList || [];
+      var sow2Set = {};
+      for (var j = 0; j < sows.length; j++) { if (sows[j].sow2) sow2Set[sows[j].sow2] = true; }
+      var sow2Arr = Object.keys(sow2Set);
+      var sow2Html = '';
+      for (var k = 0; k < sow2Arr.length; k++) {
+        var isSelSow2 = prefillData && prefillData.sow2 === sow2Arr[k] ? 'selected' : '';
+        sow2Html += '<option value="' + sow2Arr[k] + '" ' + isSelSow2 + '>' + sow2Arr[k] + '</option>';
+      }
+
+      var cats = db.costCategories || [];
+      var catHtml = '';
+      for (var c = 0; c < cats.length; c++) {
+        var isSelCat = prefillData && prefillData.costCategory === cats[c] ? 'selected' : '';
+        catHtml += '<option value="' + cats[c] + '" ' + isSelCat + '>' + cats[c] + '</option>';
+      }
+
+      var isRevisionMode = prefillData && prefillData.isRevision;
+      var revisionBanner = isRevisionMode ? 
+        '<div class="alert alert-warning p-2.5 rounded-3 mb-2 small">' +
+          '<div class="fw-bold text-dark"><i class="bi bi-pencil-square me-1"></i> Form Pengajuan Ulang (Revisi) untuk ' + prefillData.noRF + '</div>' +
+          '<small class="text-secondary">Silakan perbaiki data di bawah sesuai catatan revisi.</small>' +
+        '</div>' : '';
+
+      container.innerHTML = '<form id="formRFRPM" onsubmit="handleRFRPMSubmit(event)" class="d-flex flex-column gap-3 max-w-lg mx-auto">' +
+        revisionBanner +
+        '<input type="hidden" id="rfIsRevision" value="' + (isRevisionMode ? 'true' : 'false') + '">' +
+        '<input type="hidden" id="rfTargetNoRF" value="' + (prefillData ? prefillData.noRF : '') + '">' +
+        '<div class="row g-2">' +
+        '<div class="col-12 col-sm-6">' +
+          '<label class="form-label small fw-bold mb-1">Site ID Target *</label>' +
+          '<select id="rfSiteSelector" onchange="onSiteRPMChanged(this.value)" required class="form-select form-select-sm">' + sitesHtml + '</select>' +
+          '<div id="rfVisitTimesInfo" class="mt-1 small fw-bold text-primary" style="font-size: 11px;">' +
+            '<i class="bi bi-geo-alt-fill text-danger me-1"></i> <span id="rfVisitTimesText">Menghitung riwayat kunjungan...</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-12 col-sm-6"><label class="form-label small fw-bold mb-1">Nominal (Rp) *</label><input type="number" id="rfNominalRPM" value="' + (prefillData ? prefillData.totalNilai : '') + '" min="1000" placeholder="Contoh: 2500000" required class="form-control form-control-sm fw-bold text-primary"></div>' +
+        '</div>' +
+        '<div class="card bg-light p-2 rounded-2 border"><small class="fw-bold mb-2 d-block">Scope of Work & Item Code</small>' +
+        '<div class="row g-2">' +
+        '<div class="col-12 col-sm-4"><label class="form-label small mb-1">SOW 2 *</label><select id="rfSOW2Select" onchange="onSOW2Changed(this.value)" required class="form-select form-select-sm">' + sow2Html + '</select></div>' +
+        '<div class="col-12 col-sm-4"><label class="form-label small mb-1">SOW 4 Activity *</label><select id="rfSOW4Select" onchange="onSOW4Changed(this.value)" required class="form-select form-select-sm"></select></div>' +
+        '<div class="col-12 col-sm-4"><label class="form-label small mb-1">Item Code</label><input type="text" id="rfItemCode" readonly class="form-control form-control-sm bg-white font-monospace fw-bold"></div>' +
+        '</div></div>' +
+        '<div class="card bg-light p-2 rounded-2 border"><small class="fw-bold mb-2 d-block">Cost Category & Detail Belanja</small>' +
+        '<div class="row g-2">' +
+        '<div class="col-12 col-sm-6"><label class="form-label small mb-1">Cost Category *</label><select id="rfCostCategory" onchange="onCostCatChanged(this.value)" required class="form-select form-select-sm">' + catHtml + '</select></div>' +
+        '<div class="col-12 col-sm-6"><label class="form-label small mb-1">Cost Detail *</label><select id="rfCostDetail" onchange="onCostDetailSelectChanged(this.value)" required class="form-select form-select-sm"><option value="">-- Pilih Cost Detail --</option></select><input type="text" id="rfCostDetailManual" placeholder="Ketik rincian baru..." class="form-control form-control-sm mt-1 d-none"></div>' +
+        '<div class="col-12"><label class="form-label small mb-1">Keterangan / Catatan ' + (isRevisionMode ? 'Perbaikan Revisi *' : 'Tambahan') + '</label><input type="text" id="rfKeteranganCost" value="' + (prefillData && prefillData.keterangan ? prefillData.keterangan : '') + '" placeholder="Contoh: Perbaikan rincian BBM dan nota pendukung" class="form-control form-control-sm"></div>' +
+        '</div></div>' +
+        '<div class="card bg-warning bg-opacity-10 border-warning p-2 rounded-2"><label class="form-label small fw-bold text-dark mb-1"><i class="bi bi-paperclip me-1"></i> Upload Dokumen Pendukung (PDF/Foto)</label><input type="file" id="rfRPMFileInput" accept="application/pdf,image/*" class="form-control form-control-sm bg-white"></div>' +
+        '<button type="submit" class="btn btn-sm ' + (isRevisionMode ? 'btn-warning text-dark' : 'btn-primary') + ' fw-bold py-2"><i class="bi bi-send me-1"></i> ' + (isRevisionMode ? 'Kirim Pengajuan Revisi RF' : 'Kirim Pengajuan RF') + '</button>' +
+        '</form>';
+
+      if (pos.length > 0) onSiteRPMChanged(prefillData ? prefillData.siteIds : pos[0].siteId);
+      if (sow2Arr.length > 0) onSOW2Changed(prefillData ? prefillData.sow2 : sow2Arr[0]);
+      if (cats.length > 0) onCostCatChanged(prefillData ? prefillData.costCategory : cats[0]);
+    }
+
+    function onSiteRPMChanged(siteId) {
+      var textEl = document.getElementById("rfVisitTimesText");
+      if (!textEl || !siteId) return;
+
+      var list = db.list || [];
+      var visitCount = 0;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].siteIds === siteId) {
+          visitCount++;
+        }
+      }
+
+      var nextVisit = visitCount + 1;
+      if (visitCount === 0) {
+        textEl.innerHTML = '<span class="badge bg-success text-white">Kunjungan Pertama (Visit 1)</span> &bull; <span class="text-muted">Belum pernah dikunjungi sebelumnya</span>';
+      } else {
+        textEl.innerHTML = '<span class="badge bg-warning text-dark">Kunjungan ke-' + nextVisit + ' (Visit ' + nextVisit + ')</span> &bull; <span class="text-secondary">Sudah ' + visitCount + 'x diajukan sebelumnya</span>';
+      }
+    }
+
+    function onSOW2Changed(val) {
+      var s4Select = document.getElementById("rfSOW4Select");
+      var icInput = document.getElementById("rfItemCode");
+      if (!s4Select || !icInput) return;
+      var sows = db.sowList || [];
+      var filtered = [];
+      for (var i = 0; i < sows.length; i++) {
+        if (sows[i].sow2 === val) filtered.push(sows[i]);
+      }
+      if (filtered.length === 0) {
+        s4Select.innerHTML = '<option value="-">-</option>';
+        icInput.value = "-";
+      } else {
+        var optHtml = '';
+        for (var j = 0; j < filtered.length; j++) {
+          optHtml += '<option value="' + filtered[j].sow4 + '" data-ic="' + filtered[j].itemCode + '">' + filtered[j].sow4 + '</option>';
+        }
+        s4Select.innerHTML = optHtml;
+        onSOW4Changed(filtered[0].sow4);
+      }
+    }
+
+    function onSOW4Changed(val) {
+      var s4Select = document.getElementById("rfSOW4Select");
+      var icInput = document.getElementById("rfItemCode");
+      if (!s4Select || !icInput) return;
+      var opt = s4Select.options[s4Select.selectedIndex];
+      icInput.value = opt ? (opt.getAttribute("data-ic") || "-") : "-";
+    }
+
+    function onCostCatChanged(val) {
+      var sel = document.getElementById("rfCostDetail");
+      var manualInp = document.getElementById("rfCostDetailManual");
+      if (!sel) return;
+
+      var catalog = db.costCatalog || [];
+      var optHtml = '';
+      for (var i = 0; i < catalog.length; i++) {
+        if (String(catalog[i].costCategory).trim().toLowerCase() === String(val).trim().toLowerCase()) {
+          optHtml += '<option value="' + catalog[i].costDetail + '">' + catalog[i].costDetail + '</option>';
+        }
+      }
+      optHtml += '<option value="__MANUAL__">+ Tambah Rincian Baru...</option>';
+      sel.innerHTML = optHtml;
+
+      if (manualInp) { manualInp.classList.add("d-none"); manualInp.value = ""; }
+    }
+
+    function onCostDetailSelectChanged(val) {
+      var manualInp = document.getElementById("rfCostDetailManual");
+      if (!manualInp) return;
+      if (val === "__MANUAL__") {
+        manualInp.classList.remove("d-none");
+        manualInp.required = true;
+        manualInp.focus();
+      } else {
+        manualInp.classList.add("d-none");
+        manualInp.required = false;
+        manualInp.value = "";
+      }
+    }
+
+    function handleRFRPMSubmit(e) {
+      e.preventDefault();
+      startLoading();
+
+      var fileInput = document.getElementById("rfRPMFileInput");
+      var file = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0] : null;
+
+      var selVal = document.getElementById("rfCostDetail").value;
+      var detailVal = (selVal === "__MANUAL__") ? (document.getElementById("rfCostDetailManual").value.trim() || "-") : (selVal || "-");
+
+      var isRev = document.getElementById("rfIsRevision") && document.getElementById("rfIsRevision").value === 'true';
+      var targetNo = document.getElementById("rfTargetNoRF") ? document.getElementById("rfTargetNoRF").value : null;
+
+      var payload = {
+        role: "RPM",
+        email: currentUser.email,
+        namaRequester: currentUser.nama,
+        siteIds: [document.getElementById("rfSiteSelector").value],
+        totalNilai: parseFloat(document.getElementById("rfNominalRPM").value) || 0,
+        kategoriBiaya: "OPEX",
+        costCategory: document.getElementById("rfCostCategory").value,
+        costDetail: detailVal,
+        keteranganCost: document.getElementById("rfKeteranganCost") ? document.getElementById("rfKeteranganCost").value.trim() : "-",
+        catatanRevisi: isRev ? (document.getElementById("rfKeteranganCost") ? document.getElementById("rfKeteranganCost").value.trim() : "Revisi diajukan") : null,
+        isRevision: isRev,
+        noRF: isRev ? targetNo : null,
+        sowDetails: [{
+          sow2: document.getElementById("rfSOW2Select").value,
+          sow4: document.getElementById("rfSOW4Select").value,
+          itemCode: document.getElementById("rfItemCode").value
+        }],
+        fileName: file ? file.name : null,
+        fileMimeType: file ? file.type : null,
+        fileData: null
+      };
+
+      var executeSave = function() {
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              endLoading();
+              Swal.fire('Berhasil!', res, 'success');
+              loadAllData();
+              loadPage('status_rf');
+            })
+            .withFailureHandler(function(err) {
+              endLoading();
+              Swal.fire('Gagal!', err.message, 'error');
+            })
+            .saveRequestForm(payload);
+        } else {
+          db.list.unshift({
+            noRF: payload.noRF || ("FR-2609-00" + (db.list.length + 1)),
+            tgl: "01/09/2026",
+            tglTransfer: "-",
+            siteIds: payload.siteIds[0],
+            sow2: payload.sowDetails[0].sow2,
+            sow4: payload.sowDetails[0].sow4,
+            itemCode: payload.sowDetails[0].itemCode,
+            kategori: "OPEX",
+            costCategory: payload.costCategory,
+            costDetail: payload.costDetail,
+            picPenerima: currentUser.nama,
+            debit: 0,
+            credit: payload.totalNilai,
+            totalNilai: payload.totalNilai,
+            sumberKas: "Kas Kecil A",
+            biayaTrf: 0,
+            status: "Pending PM",
+            urlLampiran: file ? "#" : "-",
+            saldoKas: 0
+          });
+          endLoading();
+          Swal.fire('Berhasil', 'Pengajuan RPM berhasil dicatat!', 'success');
+          loadPage('status_rf');
+        }
+      };
+
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          payload.fileData = evt.target.result;
+          executeSave();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        executeSave();
+      }
+    }
+
+    // --- VIEW: APPROVAL BOX (DENGAN OPSI TOLAK, REVISI, & SETUJUI/TRANSFER) ---
+    function renderApprovalPage(container) {
+      if (!container) return;
+      var role = currentUser.role;
+      var isDisbursement = (role === 'FA' || role === 'AS');
+
+      var listArr = Array.isArray(db.list) ? db.list : [];
+      var poList = Array.isArray(db.poList) ? db.poList : [];
+
+      var pendingList = [];
+      for (var i = 0; i < listArr.length; i++) {
+        var item = listArr[i];
+        if (!item) continue;
+        var st = String(item.status || '').trim();
+        if (role === 'PM' && st === 'Pending PM') pendingList.push(item);
+        else if (role === 'M' && st === 'Pending M') pendingList.push(item);
+        else if (role === 'PD' && st === 'Pending PD') pendingList.push(item);
+        else if (role === 'D' && st === 'Pending D') pendingList.push(item);
+        else if (role === 'FM' && st === 'Pending FM') pendingList.push(item);
+        else if (role === 'FA' && st === 'Pending FA') pendingList.push(item);
+        else if (role === 'AS' && st.indexOf('Pending') > -1) pendingList.push(item);
+      }
+
+      if (pendingList.length === 0) {
+        container.innerHTML = '<div class="card p-5 text-center border-0 bg-light rounded-3">' +
+          '<i class="bi bi-check2-circle text-success fs-1 mb-2"></i>' +
+          '<h6 class="fw-bold text-dark">Tidak Ada Antrean Approval</h6>' +
+          '<small class="text-muted">Semua dokumen untuk role <b>' + role + '</b> sudah disetujui atau belum ada pengajuan baru.</small>' +
+          '</div>';
+        return;
+      }
+
+      var cardsHtml = '<div class="d-flex flex-column gap-3">' +
+        '<div class="alert alert-info py-2 px-3 mb-0 small d-flex justify-content-between align-items-center">' +
+        '<span><i class="bi bi-clock-history me-1"></i> Terdapat <b>' + pendingList.length + '</b> dokumen menunggu tindakan Anda (<b>' + role + '</b>).</span>' +
+        '<span class="badge bg-primary">' + role + ' Approval</span>' +
+        '</div>';
+
+      for (var k = 0; k < pendingList.length; k++) {
+        var itm = pendingList[k];
+        var isFromRPM = (itm.sow2 && itm.sow2 !== '-' && itm.siteIds && itm.siteIds !== '-');
+
+        var siteVisitCount = 0;
+        var matchedTotalCredit = 0;
+
+        var targetSite = String(itm.siteIds || '').trim().toUpperCase();
+        var targetSow2 = String(itm.sow2 || '').trim().toUpperCase();
+        var targetCode = String(itm.itemCode || '').trim().toUpperCase();
+
+        for (var v = 0; v < listArr.length; v++) {
+          var row = listArr[v];
+          if (!row) continue;
+
+          var rowSite = String(row.siteIds || '').trim().toUpperCase();
+          if (rowSite === targetSite) {
+            siteVisitCount++;
+
+            var rowSow2 = String(row.sow2 || '').trim().toUpperCase();
+            var rowCode = String(row.itemCode || '').trim().toUpperCase();
+
+            var isSow2Match = (targetSow2 !== '' && targetSow2 !== '-' && rowSow2 === targetSow2);
+            var isCodeMatch = (targetCode !== '' && targetCode !== '-' && rowCode === targetCode);
+
+            if (isSow2Match || isCodeMatch) {
+              matchedTotalCredit += Number(row.credit || row.totalNilai || 0);
+            }
+          }
+        }
+
+        if (matchedTotalCredit === 0) {
+          matchedTotalCredit = Number(itm.credit || itm.totalNilai || 0);
+        }
+
+        var poItem = null;
+        for (var p = 0; p < poList.length; p++) {
+          if (String(poList[p].siteId || '').trim().toUpperCase() === targetSite) {
+            poItem = poList[p];
+            break;
+          }
+        }
+        var paguPO = poItem ? Number(poItem.budget || 0) : 0;
+        var pctSpent = (paguPO > 0) ? ((matchedTotalCredit / paguPO) * 100) : 0;
+
+        var budgetBadgeClass = 'bg-success';
+        var budgetStatusText = 'Aman';
+        if (pctSpent >= 100) {
+          budgetBadgeClass = 'bg-danger';
+          budgetStatusText = 'OVER BUDGET';
+        } else if (pctSpent >= 85) {
+          budgetBadgeClass = 'bg-warning text-dark';
+          budgetStatusText = 'Mendekati Limit';
+        }
+
+        var rpmAnalyticsBox = '';
+        if (isFromRPM) {
+          rpmAnalyticsBox = '<div class="card bg-light bg-opacity-75 border p-2.5 rounded-3 mb-2">' +
+            '<div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">' +
+              '<span class="small fw-bold text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Rincian Pengajuan Lapangan (RPM)</span>' +
+              '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle">Kunjungan ke-' + siteVisitCount + ' (Visit ' + siteVisitCount + ')</span>' +
+            '</div>' +
+            '<div class="row g-2 text-start small mb-2">' +
+              '<div class="col-12 col-sm-6">' +
+                '<span class="text-muted d-block" style="font-size: 10px;">SOW 2</span>' +
+                '<span class="fw-bold text-dark">' + (itm.sow2 || '-') + '</span>' +
+              '</div>' +
+              '<div class="col-12 col-sm-6">' +
+                '<span class="text-muted d-block" style="font-size: 10px;">SOW 4 Activity</span>' +
+                '<span class="fw-bold text-dark">' + (itm.sow4 || '-') + '</span>' +
+              '</div>' +
+              '<div class="col-6 col-sm-4">' +
+                '<span class="text-muted d-block" style="font-size: 10px;">Item Code</span>' +
+                '<span class="fw-bold text-primary font-monospace">' + (itm.itemCode || '-') + '</span>' +
+              '</div>' +
+              '<div class="col-6 col-sm-4">' +
+                '<span class="text-muted d-block" style="font-size: 10px;">Total Pengajuan (SOW/Code Sama)</span>' +
+                '<span class="fw-bold text-primary">Rp ' + matchedTotalCredit.toLocaleString('id-ID') + '</span>' +
+              '</div>' +
+              '<div class="col-12 col-sm-4">' +
+                '<span class="text-muted d-block" style="font-size: 10px;">Penyerapan PO (' + (paguPO > 0 ? ('Pagu: Rp ' + paguPO.toLocaleString('id-ID')) : 'Pagu: -') + ')</span>' +
+                '<span class="badge ' + budgetBadgeClass + ' fw-bold">' + pctSpent.toFixed(1) + '% &bull; ' + budgetStatusText + '</span>' +
+              '</div>' +
+              '<div class="col-12 mt-1">' +
+                '<span class="text-muted d-block" style="font-size: 10px;">Keterangan / Catatan Tambahan</span>' +
+                '<span class="text-secondary fst-italic">' + (itm.keterangan || itm.catatan || '-') + '</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }
+
+        var lampiranHtml = '';
+        if (itm.urlLampiran && itm.urlLampiran !== '-') {
+          lampiranHtml = '<div class="mb-2 p-1.5 bg-light rounded border small">' +
+            '<a href="' + itm.urlLampiran + '" target="_blank" class="text-decoration-none fw-bold small text-primary"><i class="bi bi-paperclip me-1"></i> Buka Lampiran Berkas SPK / Nota</a>' +
+          '</div>';
+        }
+
+        var disburseBox = '';
+        if (isDisbursement) {
+          disburseBox = '<div class="card bg-warning bg-opacity-10 border-warning p-2.5 rounded-2 mb-2">' +
+            '<small class="fw-bold text-dark mb-1 d-block"><i class="bi bi-cash-stack me-1"></i> Opsi Pencairan & Transfer Kas</small>' +
+            '<div class="row g-2 mb-2">' +
+            '<div class="col-12 col-sm-6"><label class="form-label small mb-1" style="font-size:10px;">Pilih Sumber Kas *</label><select id="apvVaultSelector_' + itm.noRF + '" class="form-select form-select-sm fw-bold"><option value="Kas Kecil A">Kas Kecil A</option><option value="Kas Kecil B">Kas Kecil B</option><option value="Kas Kecil C">Kas Kecil C</option><option value="Kas Kecil D">Kas Kecil D</option><option value="Kas Besar">Kas Besar</option></select></div>' +
+            '<div class="col-12 col-sm-6"><label class="form-label small mb-1" style="font-size:10px;">Biaya Transfer Bank (Rp)</label><select id="apvTransferFee_' + itm.noRF + '" class="form-select form-select-sm"><option value="0">0 (Sesama Bank)</option><option value="2500" selected>Rp 2.500 (BI-FAST)</option><option value="6500">Rp 6.500 (Online Realtime)</option></select></div>' +
+            '</div>' +
+            '<div><label class="form-label small mb-1 text-dark" style="font-size:10px;">Upload Bukti Transfer Bank *</label><input type="file" id="apvTransferFile_' + itm.noRF + '" accept="image/*,application/pdf" class="form-control form-control-sm bg-white"></div>' +
+            '</div>';
+        }
+
+        var btnActionLabel = isDisbursement ? 'Eksekusi Transfer' : 'Setujui';
+        var actionParam = isDisbursement ? 'Transferred' : 'Approve';
+
+        cardsHtml += '<div class="card p-3 border rounded-3 shadow-sm bg-white">' +
+          '<div class="d-flex justify-content-between align-items-start mb-2">' +
+          '<div>' +
+          '<span class="fw-bold text-primary small">' + itm.noRF + '</span> &bull; <small class="text-muted">' + itm.tgl + '</small>' +
+          '<div class="fw-bold text-dark fs-6 mt-1">' + (itm.picPenerima || 'Pemohon') + ' &bull; <span class="badge bg-light text-dark border">' + itm.siteIds + '</span></div>' +
+          '<small class="text-secondary d-block mt-0.5"><span class="badge bg-light text-dark border me-1">' + itm.costCategory + '</span> ' + itm.costDetail + '</small>' +
+          '</div>' +
+          '<div class="text-end">' +
+          '<span class="fs-6 fw-extrabold text-primary">Rp ' + Number(itm.totalNilai || itm.credit || 0).toLocaleString('id-ID') + '</span>' +
+          '<span class="badge bg-warning text-dark d-block mt-1">' + itm.status + '</span>' +
+          '</div>' +
+          '</div>' +
+          rpmAnalyticsBox +
+          lampiranHtml +
+          disburseBox +
+          '<div class="d-flex justify-content-end gap-2 border-top pt-2 mt-1">' +
+          '<button onclick="processApproval(\'' + itm.noRF + '\', \'Reject\')" class="btn btn-sm btn-outline-danger px-3">Tolak</button>' +
+          '<button onclick="processApproval(\'' + itm.noRF + '\', \'Revisi\')" class="btn btn-sm btn-outline-warning text-dark px-3"><i class="bi bi-pencil-square me-1"></i> Minta Revisi</button>' +
+          '<button onclick="processApproval(\'' + itm.noRF + '\', \'' + actionParam + '\')" class="btn btn-sm btn-success fw-bold px-3"><i class="bi bi-check2-circle me-1"></i> ' + btnActionLabel + '</button>' +
+          '</div>' +
+          '</div>';
+      }
+      cardsHtml += '</div>';
+      container.innerHTML = cardsHtml;
+    }
+
+    function processApproval(noRF, action) {
+      var isDisbursement = (currentUser.role === 'FA' || currentUser.role === 'AS');
+      var fileInp = document.getElementById("apvTransferFile_" + noRF);
+      var vaultSel = document.getElementById("apvVaultSelector_" + noRF) ? document.getElementById("apvVaultSelector_" + noRF).value : 'Kas Kecil A';
+      var feeVal = document.getElementById("apvTransferFee_" + noRF) ? document.getElementById("apvTransferFee_" + noRF).value : 0;
+
+      if (isDisbursement && action === 'Transferred' && fileInp && (!fileInp.files || fileInp.files.length === 0)) {
+        Swal.fire('Perhatian', 'Harap upload bukti transfer sebelum menyelesaikan transfer kas.', 'warning');
+        return;
+      }
+
+      if (action === 'Reject' || action === 'Revisi') {
+        Swal.fire({
+          title: (action === 'Reject' ? 'Tolak Pengajuan ' : 'Minta Revisi ') + noRF,
+          text: 'Tuliskan catatan alasan / hal yang harus diperbaiki pemohon:',
+          input: 'textarea',
+          inputPlaceholder: 'Contoh: Lampirkan rincian SPK terbaru / Kurangi pagu biaya...',
+          showCancelButton: true,
+          confirmButtonText: 'Kirim ' + action,
+          cancelButtonText: 'Batal',
+          inputValidator: function(value) {
+            if (!value || !value.trim()) {
+              return 'Catatan tidak boleh kosong!';
+            }
+          }
+        }).then(function(result) {
+          if (result.isConfirmed && result.value) {
+            executeApprovalCall(noRF, action, result.value.trim(), null, null, null, feeVal, vaultSel);
+          }
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: 'Konfirmasi ' + (action === 'Transferred' ? 'Transfer Kas' : 'Approval') + '?',
+        text: 'Memproses persetujuan dokumen ' + noRF,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Proses'
+      }).then(function(res) {
+        if (res.isConfirmed) {
+          if (fileInp && fileInp.files && fileInp.files[0]) {
+            var file = fileInp.files[0];
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              var base64 = e.target.result.split(',')[1];
+              executeApprovalCall(noRF, action, '', base64, file.name, file.type, feeVal, vaultSel);
+            };
+            reader.readAsDataURL(file);
+          } else {
+            executeApprovalCall(noRF, action, '', null, null, null, feeVal, vaultSel);
+          }
+        }
+      });
+    }
+
+    function executeApprovalCall(noRF, action, note, fileBase64, fileName, fileMime, feeVal, vaultSel) {
+      startLoading();
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(msg) {
+            endLoading();
+            Swal.fire('Selesai', msg, 'success');
+            loadAllData();
+            loadPage('approval_box');
+          })
+          .withFailureHandler(function(err) {
+            endLoading();
+            Swal.fire('Gagal', err.message, 'error');
+          })
+          .submitApprovalAction(noRF, currentUser.role, action, note, fileBase64, fileName, fileMime, feeVal, vaultSel, 'Kas Kecil A');
+      } else {
+        var target = null;
+        for (var i = 0; i < db.list.length; i++) {
+          if (db.list[i].noRF === noRF) { target = db.list[i]; break; }
+        }
+        if (target) {
+          if (action.indexOf('Reject') > -1) target.status = 'Rejected by ' + currentUser.role;
+          else if (action.indexOf('Revisi') > -1) target.status = 'Revisi by ' + currentUser.role;
+          else if (target.status === 'Pending PM') target.status = 'Pending PD';
+          else if (target.status === 'Pending M') target.status = 'Pending D';
+          else if (target.status === 'Pending PD' || target.status === 'Pending D') target.status = 'Pending FM';
+          else if (target.status === 'Pending FM') target.status = 'Pending FA';
+          else if (target.status === 'Pending FA') target.status = 'Transferred';
+        }
+        endLoading();
+        Swal.fire('Selesai', 'Tindakan ' + action + ' berhasil diproses.', 'success');
+        renderNavMenu();
+        loadPage('approval_box');
+      }
+    }
+
+    // --- VIEW: STATUS REQUEST ---
+    function renderStatusRequestPage(container) {
+      if (!container) return;
+      var isRPM = (currentUser.role === 'RPM');
+      var listArr = db.list || [];
+      var poList = db.poList || [];
+      var html = '<div class="d-flex flex-column gap-2">';
+
+      var siteVisitMap = {};
+      for (var j = listArr.length - 1; j >= 0; j--) {
+        var sId = String(listArr[j].siteIds || '').trim().toUpperCase();
+        if (sId && sId !== '-') {
+          if (!siteVisitMap[sId]) siteVisitMap[sId] = 0;
+          siteVisitMap[sId]++;
+          listArr[j]._calculatedVisit = siteVisitMap[sId];
+        }
+      }
+
+      for (var i = 0; i < listArr.length; i++) {
+        var item = listArr[i];
+        if (!item) continue;
+        
+        var isRejected = String(item.status || '').indexOf('Rejected') > -1;
+        var isNeedRev = String(item.status || '').indexOf('Revisi') > -1;
+        var isTransferred = item.status === 'Transferred';
+
+        var stClass = isTransferred ? 'bg-success' : (isRejected ? 'bg-danger text-white' : (isNeedRev ? 'bg-warning text-dark' : 'bg-warning text-dark'));
+        
+        var visitBadge = '';
+        if (isRPM && item.siteIds && item.siteIds !== '-' && item.siteIds !== 'PETTY-CASH') {
+          var vCount = item._calculatedVisit || 1;
+          visitBadge = '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle ms-2">' +
+            '<i class="bi bi-geo-alt me-1"></i> Visit ' + vCount +
+          '</span>';
+        }
+
+        var btnRevisiHtml = '';
+        if (isNeedRev && (currentUser.role === 'RPM' || currentUser.role === 'AS')) {
+          btnRevisiHtml = '<button onclick="openRevisionForm(\'' + item.noRF + '\')" class="btn btn-xs btn-warning text-dark fw-bold px-2 py-1 mt-1" style="font-size: 10.5px;">' +
+            '<i class="bi bi-pencil-square me-1"></i> Kirim Ulang Revisi' +
+          '</button>';
+        }
+
+        var poBudgetBox = '';
+        var targetSite = String(item.siteIds || '').trim().toUpperCase();
+        var targetSow2 = String(item.sow2 || '').trim().toUpperCase();
+        var targetCode = String(item.itemCode || '').trim().toUpperCase();
+
+        if (targetSite !== '' && targetSite !== '-' && targetSite !== 'PETTY-CASH') {
+          var matchedTotalCredit = 0;
+          for (var v = 0; v < listArr.length; v++) {
+            var row = listArr[v];
+            if (!row) continue;
+            var rowSite = String(row.siteIds || '').trim().toUpperCase();
+            if (rowSite === targetSite) {
+              var rowSow2 = String(row.sow2 || '').trim().toUpperCase();
+              var rowCode = String(row.itemCode || '').trim().toUpperCase();
+
+              var isSow2Match = (targetSow2 !== '' && targetSow2 !== '-' && rowSow2 === targetSow2);
+              var isCodeMatch = (targetCode !== '' && targetCode !== '-' && rowCode === targetCode);
+
+              if (isSow2Match || isCodeMatch || (targetSow2 === '-' && targetCode === '-')) {
+                matchedTotalCredit += Number(row.credit || row.totalNilai || 0);
+              }
+            }
+          }
+
+          if (matchedTotalCredit === 0) {
+            matchedTotalCredit = Number(item.credit || item.totalNilai || 0);
+          }
+
+          var poItem = null;
+          for (var p = 0; p < poList.length; p++) {
+            var pSite = String(poList[p].siteId || '').trim().toUpperCase();
+            if (pSite === targetSite || targetSite.indexOf(pSite) > -1 || pSite.indexOf(targetSite) > -1) {
+              poItem = poList[p];
+              break;
+            }
+          }
+
+          var paguPO = poItem ? Number(poItem.budget || 0) : 0;
+          var badgeHtml = '';
+
+          if (paguPO > 0) {
+            var pctSpent = (matchedTotalCredit / paguPO) * 100;
+            var budgetBadgeClass = 'bg-success';
+            var budgetStatusText = 'Aman';
+            if (pctSpent >= 100) {
+              budgetBadgeClass = 'bg-danger text-white';
+              budgetStatusText = 'OVER BUDGET';
+            } else if (pctSpent >= 85) {
+              budgetBadgeClass = 'bg-warning text-dark';
+              budgetStatusText = 'Mendekati Limit';
+            }
+            badgeHtml = '<span class="badge ' + budgetBadgeClass + ' fw-bold mt-1 mt-sm-0">' + 
+              pctSpent.toFixed(1) + '% dari PO (Pagu: Rp ' + paguPO.toLocaleString('id-ID') + ' &bull; ' + budgetStatusText + ')' +
+            '</span>';
+          } else {
+            badgeHtml = '<span class="badge bg-light text-muted border mt-1 mt-sm-0">Pagu PO: Belum Diset</span>';
+          }
+
+          poBudgetBox = '<div class="mt-2 pt-2 border-top d-flex flex-wrap align-items-center justify-content-between text-muted" style="font-size: 11px;">' +
+            '<span><i class="bi bi-pie-chart-fill me-1 text-primary"></i> Akumulasi SOW/Code Sama: <b class="text-dark">Rp ' + matchedTotalCredit.toLocaleString('id-ID') + '</b></span>' +
+            badgeHtml +
+          '</div>';
+        }
+
+        html += '<div class="card p-3 border rounded-3 bg-white shadow-sm mb-2">' +
+          '<div class="d-flex flex-row justify-content-between align-items-start">' +
+            '<div>' +
+              '<div class="d-flex align-items-center mb-1">' +
+                '<span class="fw-bold text-primary small">' + item.noRF + '</span>' +
+                '<span class="text-muted small mx-1">&bull;</span>' +
+                '<small class="text-muted">' + item.tgl + '</small>' +
+                visitBadge +
+              '</div>' +
+              '<div class="small text-dark fw-bold">' + (item.siteIds !== '-' ? '<span class="badge bg-light text-dark border me-1">' + item.siteIds + '</span>' : '') + item.costCategory + ' &ndash; ' + item.costDetail + '</div>' +
+              '<div class="small text-muted mt-0.5">Total Pengajuan: <span class="fw-bold text-dark">Rp ' + Number(item.totalNilai || item.credit || 0).toLocaleString('id-ID') + '</span></div>' +
+            '</div>' +
+            '<div class="text-end">' +
+              '<span class="badge ' + stClass + '">' + item.status + '</span>' +
+              '<div>' + btnRevisiHtml + '</div>' +
+            '</div>' +
+          '</div>' +
+          poBudgetBox +
+        '</div>';
+      }
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function openRevisionForm(noRF) {
+      var item = null;
+      for (var i = 0; i < db.list.length; i++) {
+        if (db.list[i] && db.list[i].noRF === noRF) { item = db.list[i]; break; }
+      }
+      if (!item) return;
+
+      var prefill = {
+        noRF: item.noRF,
+        isRevision: true,
+        siteIds: item.siteIds,
+        totalNilai: item.credit || item.totalNilai || 0,
+        sow2: item.sow2,
+        costCategory: item.costCategory,
+        costDetail: item.costDetail,
+        keterangan: item.keterangan || item.catatan || ""
+      };
+
+      currentPage = 'rf_rpm';
+      renderNavMenu();
+      var content = document.getElementById("appDynamicContent");
+      var title = document.getElementById("pageMainTitle");
+      var subtitle = document.getElementById("pageMainSubtitle");
+      if (title) title.innerText = "Revisi Pengajuan: " + item.noRF;
+      if (subtitle) subtitle.innerText = "Perbarui rincian dokumen sesuai instruksi approver";
+      renderRFRPMPage(content, prefill);
+    }
+
+    // --- VIEW: RSPF ---
+    function renderRSPFPage(container) {
+      if (!container) return;
+      var isRPM = (currentUser.role === 'RPM');
+      var transferred = [];
+      for (var i = 0; i < db.list.length; i++) {
+        if (db.list[i] && db.list[i].status === 'Transferred') transferred.push(db.list[i]);
+      }
+
+      var optHtml = '<option value="">-- Pilih Dokumen RF --</option>';
+      for (var j = 0; j < transferred.length; j++) {
+        optHtml += '<option value="' + transferred[j].noRF + '">' + transferred[j].noRF + ' - ' + transferred[j].siteIds + ' (Rp ' + Number(transferred[j].credit || transferred[j].totalNilai).toLocaleString('id-ID') + ')</option>';
+      }
+
+      var rpmBox = '';
+      if (isRPM) {
+        rpmBox = '<div id="rspfRPMDetailBox" class="card bg-primary bg-opacity-10 border-primary p-3 rounded-3 d-none">' +
+          '<div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-primary border-opacity-25">' +
+          '<span class="fw-bold small text-primary"><i class="bi bi-layers me-1"></i> Rincian Teknis Pekerjaan (RPM)</span>' +
+          '<span class="badge bg-primary">Read-Only</span>' +
+          '</div>' +
+          '<div class="row g-2 small">' +
+          '<div class="col-12 col-sm-6"><span class="text-muted d-block" style="font-size: 10px;">SOW 2</span><input type="text" id="rspfViewSOW2" readonly class="form-control form-control-sm bg-white fw-bold"></div>' +
+          '<div class="col-12 col-sm-6"><span class="text-muted d-block" style="font-size: 10px;">SOW 4 Activity</span><input type="text" id="rspfViewSOW4" readonly class="form-control form-control-sm bg-white fw-bold"></div>' +
+          '<div class="col-6 col-sm-4"><span class="text-muted d-block" style="font-size: 10px;">Item Code</span><input type="text" id="rspfViewItemCode" readonly class="form-control form-control-sm bg-white font-monospace fw-bold text-primary"></div>' +
+          '<div class="col-6 col-sm-4"><span class="text-muted d-block" style="font-size: 10px;">Cost Category</span><input type="text" id="rspfViewCostCategory" readonly class="form-control form-control-sm bg-white"></div>' +
+          '<div class="col-12 col-sm-4"><span class="text-muted d-block" style="font-size: 10px;">Cost Detail</span><input type="text" id="rspfViewCostDetail" readonly class="form-control form-control-sm bg-white"></div>' +
+          '</div></div>';
+      }
+
+      container.innerHTML = '<form id="formRSPFMain" onsubmit="handleRSPFSubmit(event)" class="d-flex flex-column gap-3 max-w-lg mx-auto">' +
+        '<div><label class="form-label small fw-bold mb-1">Pilih Nomor RF yang Telah Cair *</label><select id="rspfNoRFSelector" onchange="onRSPFSelected(this.value)" required class="form-select form-select-sm fw-bold">' + optHtml + '</select></div>' +
+        rpmBox +
+        '<div class="row g-2">' +
+        '<div class="col-4"><label class="form-label small mb-1">Pencairan</label><input type="text" id="rspfNominalAwal" readonly class="form-control form-control-sm bg-light fw-bold"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Realisasi Riil *</label><input type="number" id="rspfNominalRiil" oninput="calcRSPFSelisih()" required placeholder="Rp Riil" class="form-control form-control-sm fw-bold text-primary"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Selisih</label><input type="text" id="rspfSelisihDisplay" readonly class="form-control form-control-sm bg-light fw-bold"></div>' +
+        '</div>' +
+        '<div class="card bg-light p-3 rounded-3 border">' +
+        '<label class="form-label small fw-bold text-dark mb-1"><i class="bi bi-file-earmark-arrow-up me-1"></i> Upload Bukti Transaksi (Nota / Kuitansi / Bukti Refund) *</label>' +
+        '<input type="file" id="rspfFileInput" accept="image/*,application/pdf" capture="environment" required class="form-control form-control-sm bg-white">' +
+        '<small class="text-muted mt-1 d-block" style="font-size: 10px;">Format: PDF atau Foto (JPG/PNG). Lampirkan nota pembelian riil, kuitansi, atau bukti pengembalian dana.</small>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-sm btn-warning text-dark fw-bold py-2 shadow-sm"><i class="bi bi-send me-1"></i> Kirim Laporan Realisasi RSPF</button>' +
+        '</form>';
+    }
+
+    function onRSPFSelected(noRF) {
+      var item = null;
+      for (var i = 0; i < db.list.length; i++) {
+        if (db.list[i] && db.list[i].noRF === noRF) { item = db.list[i]; break; }
+      }
+      var nominal = item ? (item.credit || item.totalNilai || 0) : 0;
+      document.getElementById("rspfNominalAwal").value = "Rp " + Number(nominal).toLocaleString('id-ID');
+      document.getElementById("rspfNominalAwal").setAttribute("data-raw", nominal);
+      calcRSPFSelisih();
+
+      var rpmBox = document.getElementById("rspfRPMDetailBox");
+      if (rpmBox && item) {
+        rpmBox.classList.remove("d-none");
+        document.getElementById("rspfViewSOW2").value = item.sow2 || "-";
+        document.getElementById("rspfViewSOW4").value = item.sow4 || "-";
+        document.getElementById("rspfViewItemCode").value = item.itemCode || "-";
+        document.getElementById("rspfViewCostCategory").value = item.costCategory || "-";
+        document.getElementById("rspfViewCostDetail").value = item.costDetail || "-";
+      }
+    }
+
+    function calcRSPFSelisih() {
+      var awalEl = document.getElementById("rspfNominalAwal");
+      var riilEl = document.getElementById("rspfNominalRiil");
+      var selisihEl = document.getElementById("rspfSelisihDisplay");
+      if (!awalEl || !riilEl || !selisihEl) return;
+      var awal = parseFloat(awalEl.getAttribute("data-raw")) || 0;
+      var riil = parseFloat(riilEl.value) || 0;
+      var diff = awal - riil;
+      selisihEl.value = (diff >= 0 ? "Lebih: Rp " : "Kurang: Rp ") + Math.abs(diff).toLocaleString('id-ID');
+    }
+
+    function handleRSPFSubmit(e) {
+      e.preventDefault();
+      startLoading();
+
+      var noRF = document.getElementById("rspfNoRFSelector").value;
+      var nominalAwal = parseFloat(document.getElementById("rspfNominalAwal").getAttribute("data-raw")) || 0;
+      var nominalRiil = parseFloat(document.getElementById("rspfNominalRiil").value) || 0;
+      var selisih = nominalAwal - nominalRiil;
+
+      var fileInp = document.getElementById("rspfFileInput");
+      var file = (fileInp && fileInp.files && fileInp.files.length > 0) ? fileInp.files[0] : null;
+
+      var payload = {
+        noRF: noRF,
+        emailRequester: currentUser.email,
+        nilaiPencairan: nominalAwal,
+        nilaiRealisasi: nominalRiil,
+        selisihNilai: selisih,
+        fileName: file ? file.name : null,
+        fileMimeType: file ? file.type : null,
+        fileData: null
+      };
+
+      var sendReport = function() {
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              endLoading();
+              Swal.fire('Berhasil!', res, 'success');
+              loadAllData();
+              loadPage(currentUser.role === 'RPM' ? 'status_rf' : 'dashboard');
+            })
+            .withFailureHandler(function(err) {
+              endLoading();
+              Swal.fire('Gagal!', err.message, 'error');
+            })
+            .saveRSPFReport(payload);
+        } else {
+          endLoading();
+          Swal.fire('Berhasil', 'Laporan RSPF berhasil dikirim.', 'success');
+          loadPage(currentUser.role === 'RPM' ? 'status_rf' : 'dashboard');
+        }
+      };
+
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          payload.fileData = evt.target.result;
+          sendReport();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        sendReport();
+      }
+    }
+
+    // --- VIEW: INVOICE MANAGEMENT ---
+    function renderInvoiceManagementPage(container) {
+      if (!container) return;
+      var invs = Array.isArray(db.invoicesList) ? db.invoicesList : [];
+      var rows = '';
+      for (var i = 0; i < invs.length; i++) {
+        var iv = invs[i];
+        var stClass = (iv.status.indexOf('Lunas') > -1) ? 'bg-success' : 'bg-warning text-dark';
+        var btnAction = (iv.status.indexOf('Lunas') === -1) ? ('<button onclick="settleInvoice(\'' + iv.noInvoice + '\')" class="btn btn-sm btn-success py-0 px-2" style="font-size: 10px;">Cairkan</button>') : '<span class="text-success fw-bold">Lunas</span>';
+        rows += '<tr>' +
+          '<td class="fw-bold text-primary">' + iv.noInvoice + '</td><td>' + iv.klienProject + '</td>' +
+          '<td class="text-end fw-bold">Rp ' + Number(iv.nilaiInvoice).toLocaleString('id-ID') + '</td>' +
+          '<td class="text-warning fw-bold">' + iv.jadwalMasukKas + '</td>' +
+          '<td><span class="badge ' + stClass + '">' + iv.status + '</span></td>' +
+          '<td>' + btnAction + '</td>' +
+          '</tr>';
+      }
+
+      container.innerHTML = '<div class="d-flex flex-column gap-3">' +
+        '<form onsubmit="handleInvoiceSubmit(event)" class="card bg-light p-3 border-0 rounded-3">' +
+        '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-earmark-plus me-1"></i> Input Tagihan & Jadwal Kas Masuk</h6>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col-4"><label class="form-label small mb-1">No Invoice</label><input type="text" id="invNo" required placeholder="INV-001" class="form-control form-control-sm"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">No PO</label><input type="text" id="invPO" required placeholder="PO-001" class="form-control form-control-sm"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Klien</label><select id="invKlien" class="form-select form-select-sm"><option value="ZTE">ZTE</option><option value="Huawei">Huawei</option><option value="Telkom Infra">Telkom Infra</option></select></div>' +
+        '</div>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col-4"><label class="form-label small mb-1">Nilai (Rp)</label><input type="number" id="invNilai" required placeholder="50000000" class="form-control form-control-sm fw-bold text-primary"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Tgl Terbit</label><input type="date" id="invTgl" required class="form-control form-control-sm"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Jadwal Masuk</label><input type="date" id="invJadwal" required class="form-control form-control-sm"></div>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-sm btn-primary fw-bold"><i class="bi bi-save me-1"></i> Simpan Jadwal Tagihan</button>' +
+        '</form>' +
+        '<div class="table-responsive custom-scrollbar" style="max-height: 300px;"><table class="table table-sm table-hover text-nowrap align-middle" style="font-size: 11px;"><thead class="table-light"><tr><th>No Invoice</th><th>Klien</th><th class="text-end">Nilai Tagihan</th><th>Jadwal Masuk</th><th>Status</th><th>Aksi FA</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '</div>';
+    }
+
+    function handleInvoiceSubmit(e) {
+      e.preventDefault();
+      startLoading();
+      var payload = {
+        noInvoice: document.getElementById("invNo").value.trim(),
+        noPO: document.getElementById("invPO").value.trim(),
+        klienProject: document.getElementById("invKlien").value,
+        nilaiInvoice: parseFloat(document.getElementById("invNilai").value) || 0,
+        tglInvoice: document.getElementById("invTgl").value,
+        jadwalMasukKas: document.getElementById("invJadwal").value
+      };
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); loadPage('invoice_mgmt'); }).saveInvoiceEntry(payload);
+      } else {
+        db.invoicesList.unshift(payload);
+        endLoading();
+        Swal.fire('Berhasil', 'Invoice dijadwalkan.', 'success');
+        loadPage('invoice_mgmt');
+      }
+    }
+
+    function settleInvoice(noInv) {
+      Swal.fire({ title: 'Cairkan ke Kas Besar?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Terima' }).then(function(res) {
+        if (res.isConfirmed) {
+          startLoading();
+          if (typeof google !== "undefined" && google.script && google.script.run) {
+            google.script.run.withSuccessHandler(function(msg) { endLoading(); Swal.fire('Selesai!', msg, 'success'); loadAllData(); loadPage('dashboard'); }).settleInvoiceToKasBesar(noInv);
+          } else {
+            endLoading();
+            Swal.fire('Selesai', 'Dana masuk ke Kas Besar.', 'success');
+            loadPage('dashboard');
+          }
+        }
+      });
+    }
+
+    // --- VIEW: UTANG & PIUTANG ---
+    function renderUtangPiutangPage(container) {
+      if (!container) return;
+      var canEdit = ['FA', 'AS'].includes(currentUser.role);
+      var list = Array.isArray(db.utangPiutangList) ? db.utangPiutangList : [];
+
+      var totalUtang = 0, totalPiutang = 0;
+      for (var i = 0; i < list.length; i++) {
+        var itm = list[i];
+        if (itm && itm.status !== 'Lunas') {
+          if (itm.tipe === 'Utang') totalUtang += (itm.sisa || itm.nominal || 0);
+          else if (itm.tipe === 'Piutang') totalPiutang += (itm.sisa || itm.nominal || 0);
+        }
+      }
+
+      var rows = '';
+      for (var j = 0; j < list.length; j++) {
+        var item = list[j];
+        var badgeTipe = (item.tipe === 'Utang') ? 'bg-danger' : 'bg-success';
+        var badgeSt = (item.status === 'Lunas') ? 'bg-success' : 'bg-warning text-dark';
+        var btnBayar = canEdit ? ('<td class="text-center"><button onclick="promptBayarUtang(\'' + item.id + '\', ' + item.sisa + ')" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 10px;">Bayar</button></td>') : '';
+
+        rows += '<tr>' +
+          '<td class="fw-bold text-primary">' + item.id + '</td>' +
+          '<td><span class="badge ' + badgeTipe + '">' + item.tipe + '</span></td>' +
+          '<td class="fw-bold">' + item.namaPihak + '</td><td>' + item.keterangan + '</td>' +
+          '<td class="text-end fw-bold">Rp ' + Number(item.nominal).toLocaleString('id-ID') + '</td>' +
+          '<td class="text-end fw-bold text-danger">Rp ' + Number(item.sisa).toLocaleString('id-ID') + '</td>' +
+          '<td>' + item.jatuhTempo + '</td>' +
+          '<td class="text-center"><span class="badge ' + badgeSt + '">' + item.status + '</span></td>' +
+          btnBayar +
+          '</tr>';
+      }
+
+      var formHtml = canEdit ? ('<form onsubmit="handleUtangPiutangSubmit(event)" class="card bg-light p-3 border-0 rounded-3 shadow-sm">' +
+        '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-plus-circle me-1"></i> Catat Utang / Piutang Baru</h6>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col-6 col-sm-3"><label class="form-label small mb-1">Tipe *</label><select id="upTipe" class="form-select form-select-sm fw-bold"><option value="Utang">Utang (Kewajiban)</option><option value="Piutang">Piutang (Tagihan)</option></select></div>' +
+        '<div class="col-6 col-sm-3"><label class="form-label small mb-1">Nama Pihak *</label><input type="text" id="upNama" required placeholder="PT Vendor / Mitra" class="form-control form-control-sm"></div>' +
+        '<div class="col-6 col-sm-3"><label class="form-label small mb-1">Nominal (Rp) *</label><input type="number" id="upNominal" required min="1000" placeholder="10000000" class="form-control form-control-sm fw-bold text-primary"></div>' +
+        '<div class="col-6 col-sm-3"><label class="form-label small mb-1">Jatuh Tempo *</label><input type="date" id="upJatuhTempo" required class="form-control form-control-sm"></div>' +
+        '</div>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col-12 col-sm-8"><label class="form-label small mb-1">Keterangan *</label><input type="text" id="upKet" required placeholder="Rincian transaksi..." class="form-control form-control-sm"></div>' +
+        '<div class="col-12 col-sm-4"><label class="form-label small mb-1">Catatan</label><input type="text" id="upCatatan" placeholder="No Faktur" class="form-control form-control-sm"></div>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-sm btn-primary fw-bold"><i class="bi bi-save me-1"></i> Simpan Catatan</button>' +
+        '</form>') : '<div class="alert alert-info py-2 px-3 small"><i class="bi bi-shield-lock me-1"></i> Mode View Only (FM).</div>';
+
+      container.innerHTML = '<div class="d-flex flex-column gap-3">' +
+        '<div class="row g-2">' +
+        '<div class="col-6"><div class="card bg-danger bg-opacity-10 border-danger p-2 text-center rounded-3"><small class="text-danger fw-bold" style="font-size: 11px;">Total Sisa Utang</small><span class="fs-6 fw-extrabold text-danger">Rp ' + totalUtang.toLocaleString('id-ID') + '</span></div></div>' +
+        '<div class="col-6"><div class="card bg-success bg-opacity-10 border-success p-2 text-center rounded-3"><small class="text-success fw-bold" style="font-size: 11px;">Total Sisa Piutang</small><span class="fs-6 fw-extrabold text-success">Rp ' + totalPiutang.toLocaleString('id-ID') + '</span></div></div>' +
+        '</div>' +
+        formHtml +
+        '<div class="card border-0 shadow-sm rounded-3"><div class="table-responsive custom-scrollbar" style="max-height: 350px;"><table class="table table-sm table-hover text-nowrap align-middle mb-0" style="font-size: 11px;"><thead class="table-light"><tr><th>ID</th><th>Tipe</th><th>Pihak</th><th>Keterangan</th><th class="text-end">Total</th><th class="text-end">Sisa</th><th>Jatuh Tempo</th><th class="text-center">Status</th>' + (canEdit ? '<th class="text-center">Aksi</th>' : '') + '</tr></thead><tbody>' + (rows || '<tr><td colspan="9" class="text-center py-4 text-muted">Belum ada data.</td></tr>') + '</tbody></table></div></div>' +
+        '</div>';
+    }
+
+    function handleUtangPiutangSubmit(e) {
+      e.preventDefault();
+      startLoading();
+      var payload = {
+        tipe: document.getElementById("upTipe").value,
+        namaPihak: document.getElementById("upNama").value.trim(),
+        nominal: parseFloat(document.getElementById("upNominal").value) || 0,
+        jatuhTempo: document.getElementById("upJatuhTempo").value,
+        keterangan: document.getElementById("upKet").value.trim(),
+        catatan: document.getElementById("upCatatan").value.trim()
+      };
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); loadPage('utang_piutang'); }).saveUtangPiutangEntry(payload);
+      } else {
+        endLoading();
+        db.utangPiutangList.unshift(payload);
+        Swal.fire('Berhasil', 'Catatan disimpan.', 'success');
+        loadPage('utang_piutang');
+      }
+    }
+
+    function promptBayarUtang(idUp, sisa) {
+      Swal.fire({
+        title: 'Pembayaran ' + idUp,
+        input: 'number',
+        inputValue: sisa,
+        showCancelButton: true,
+        confirmButtonText: 'Bayar'
+      }).then(function(res) {
+        if (res.isConfirmed && res.value) {
+          startLoading();
+          if (typeof google !== "undefined" && google.script && google.script.run) {
+            google.script.run.withSuccessHandler(function(msg) { endLoading(); Swal.fire('Selesai', msg, 'success'); loadAllData(); loadPage('utang_piutang'); }).updateStatusUtangPiutang(idUp, res.value);
+          } else {
+            endLoading();
+            Swal.fire('Selesai', 'Pembayaran dicatat.', 'success');
+            loadPage('utang_piutang');
+          }
+        }
+      });
+    }
+
+    // --- VIEW: USER MANAGEMENT ---
+    function renderUserManagementPage(container) {
+      if (!container) return;
+      var regKeys = Object.keys(REGIONAL_HIERARCHY);
+      var regOpts = '';
+      for (var i = 0; i < regKeys.length; i++) {
+        regOpts += '<option value="' + regKeys[i] + '">' + regKeys[i] + '</option>';
+      }
+
+      container.innerHTML = '<form onsubmit="handleUserRegistration(event)" class="card bg-light p-3 border-0 rounded-3 max-w-lg mx-auto">' +
+        '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-person-plus me-1"></i> Daftarkan Pengguna Baru</h6>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col-4"><label class="form-label small mb-1">Nama *</label><input type="text" id="regNama" required placeholder="Budi" class="form-control form-control-sm"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Email *</label><input type="email" id="regEmail" required placeholder="budi@kubikmadani.co.id" class="form-control form-control-sm"></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Password *</label><input type="text" id="regPassword" value="123456" required class="form-control form-control-sm fw-bold"></div>' +
+        '</div>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col-4"><label class="form-label small mb-1">Regional</label><select id="regMainSelector" onchange="onRegionalMainChange(this.value)" class="form-select form-select-sm">' + regOpts + '</select></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Sub Regional</label><select id="regSubSelector" class="form-select form-select-sm"><option value="Seluruh Jabodetabek">Seluruh Jabodetabek</option></select></div>' +
+        '<div class="col-4"><label class="form-label small mb-1">Role *</label><select id="regRoleSelector" onchange="onUserRoleChange(this.value)" class="form-select form-select-sm"><option value="RPM">RPM</option><option value="PM">PM</option><option value="PD">PD</option><option value="FM">FM</option><option value="FA">FA</option><option value="AS">AS</option></select></div>' +
+        '</div>' +
+        '<div class="row g-2 mb-2">' +
+        '<div id="boxProjectRPM" class="col-12"><label class="form-label small mb-1">Project Division (RPM)</label><select id="regProjectDivision" class="form-select form-select-sm"><option value="ZTE">ZTE</option><option value="Huawei">Huawei</option><option value="Telkom Infra">Telkom Infra</option></select></div>' +
+        '<div id="boxBagianNonRPM" class="col-12 d-none"><label class="form-label small mb-1">Bagian (Non-RPM)</label><select id="regBagianDivisi" class="form-select form-select-sm"><option value="Management">Management</option><option value="Finance & Accounting">Finance</option></select></div>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-sm btn-primary fw-bold"><i class="bi bi-save me-1"></i> Simpan Pengguna</button>' +
+        '</form>';
+
+      onRegionalMainChange("Jabodetabek");
+      onUserRoleChange("RPM");
+    }
+
+    function onRegionalMainChange(mainRegion) {
+      var subSelect = document.getElementById("regSubSelector");
+      if (!subSelect) return;
+      var subList = REGIONAL_HIERARCHY[mainRegion] || ["Seluruh " + mainRegion];
+      var opt = '';
+      for (var i = 0; i < subList.length; i++) {
+        opt += '<option value="' + subList[i] + '">' + subList[i] + '</option>';
+      }
+      subSelect.innerHTML = opt;
+    }
+
+    function onUserRoleChange(selectedRole) {
+      var boxProject = document.getElementById("boxProjectRPM");
+      var boxBagian = document.getElementById("boxBagianNonRPM");
+      if (!boxProject || !boxBagian) return;
+      if (selectedRole === "RPM") {
+        boxProject.classList.remove("d-none");
+        boxBagian.classList.add("d-none");
+      } else {
+        boxProject.classList.add("d-none");
+        boxBagian.classList.remove("d-none");
+      }
+    }
+
+    function handleUserRegistration(e) {
+      e.preventDefault();
+      startLoading();
+      var roleVal = document.getElementById("regRoleSelector").value;
+      var payload = {
+        nama: document.getElementById("regNama").value.trim(),
+        email: document.getElementById("regEmail").value.trim().toLowerCase(),
+        password: document.getElementById("regPassword").value.trim(),
+        role: roleVal,
+        regional: document.getElementById("regMainSelector").value,
+        subRegional: document.getElementById("regSubSelector").value,
+        project: (roleVal === "RPM") ? document.getElementById("regProjectDivision").value : "-",
+        divisi: (roleVal !== "RPM") ? document.getElementById("regBagianDivisi").value : "Operations"
+      };
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); }).saveNewUser(payload);
+      } else {
+        endLoading();
+        Swal.fire('Berhasil', 'Pengguna didaftarkan.', 'success');
+      }
+    }
+
+    // --- VIEW: MASTER DATA & SALDO ---
+    function renderMasterDataPage(container) {
+      if (!container) return;
+      var s = db.saldo || {};
+      container.innerHTML = '<div class="d-flex flex-column gap-3">' +
+        '<div class="btn-group btn-group-sm w-100" role="group">' +
+        '<button onclick="switchMasterTab(\'tabSaldo\')" id="btnTabSaldo" class="btn btn-primary fw-bold">1. Setup Saldo</button>' +
+        '<button onclick="switchMasterTab(\'tabSOW\')" id="btnTabSOW" class="btn btn-outline-primary">2. Master SOW</button>' +
+        '<button onclick="switchMasterTab(\'tabCost\')" id="btnTabCost" class="btn btn-outline-primary">3. Cost Catalog</button>' +
+        '<button onclick="switchMasterTab(\'tabPO\')" id="btnTabPO" class="btn btn-outline-primary">4. Master PO</button>' +
+        '<button onclick="switchMasterTab(\'tabBulkLK\')" id="btnTabBulkLK" class="btn btn-outline-primary">5. Upload LK</button>' +
+        '</div>' +
+        '<div id="paneTabSaldo" class="card bg-light p-3 border-0 rounded-3">' +
+        '<h6 class="fw-bold mb-2">Setup Saldo Awal Kas</h6>' +
+        '<div class="row g-2 mb-2">' +
+        '<div class="col"><label class="form-label small mb-1">Kas Besar</label><input type="number" id="inpSaldoBesar" value="' + (s.saldoBesar || 250000000) + '" class="form-control form-control-sm fw-bold"></div>' +
+        '<div class="col"><label class="form-label small mb-1">Kas Kecil A</label><input type="number" id="inpSaldoA" value="' + (s.saldoKecilA || 15000000) + '" class="form-control form-control-sm fw-bold"></div>' +
+        '<div class="col"><label class="form-label small mb-1">Kas Kecil B</label><input type="number" id="inpSaldoB" value="' + (s.saldoKecilB || 12000000) + '" class="form-control form-control-sm fw-bold"></div>' +
+        '</div>' +
+        '<button onclick="handleSaveSaldoAwal()" class="btn btn-sm btn-primary fw-bold">Simpan Saldo Awal</button>' +
+        '</div>' +
+        '<div id="paneTabSOW" class="d-none card bg-light p-3 border-0 rounded-3"><h6 class="fw-bold mb-2">Upload Master SOW (Excel / CSV)</h6><input type="file" id="uploadSOWFile" accept=".xlsx,.xls,.csv" class="form-control form-control-sm mb-2"><button onclick="processUploadSOW()" class="btn btn-sm btn-primary fw-bold">Upload SOW</button></div>' +
+        '<div id="paneTabCost" class="d-none card bg-light p-3 border-0 rounded-3"><h6 class="fw-bold mb-2">Upload Cost Catalog (Excel / CSV)</h6><input type="file" id="uploadCostFile" accept=".xlsx,.xls,.csv" class="form-control form-control-sm mb-2"><button onclick="processUploadCostCatalog()" class="btn btn-sm btn-primary fw-bold">Upload Cost Catalog</button></div>' +
+        '<div id="paneTabPO" class="d-none card bg-light p-3 border-0 rounded-3"><h6 class="fw-bold mb-2">Upload Master PO Line & Site ID</h6><input type="file" id="uploadPOFile" accept=".xlsx,.xls,.csv" class="form-control form-control-sm mb-2"><button onclick="processUploadPO()" class="btn btn-sm btn-primary fw-bold">Upload Master PO</button></div>' +
+        '<div id="paneTabBulkLK" class="d-none card bg-light p-3 border-0 rounded-3"><h6 class="fw-bold mb-2">Upload LK Approved</h6><input type="file" id="uploadLKFile" accept=".xlsx,.xls,.csv" class="form-control form-control-sm mb-2"><button onclick="processUploadLK()" class="btn btn-sm btn-success fw-bold">Upload LK</button></div>' +
+        '</div>';
+    }
+
+    function switchMasterTab(tabId) {
+      var panes = ['paneTabSaldo', 'paneTabSOW', 'paneTabCost', 'paneTabPO', 'paneTabBulkLK'];
+      for (var i = 0; i < panes.length; i++) {
+        var el = document.getElementById(panes[i]);
+        if (el) el.classList.add('d-none');
+      }
+      var btns = ['btnTabSaldo', 'btnTabSOW', 'btnTabCost', 'btnTabPO', 'btnTabBulkLK'];
+      for (var j = 0; j < btns.length; j++) {
+        var btn = document.getElementById(btns[j]);
+        if (btn) btn.className = "btn btn-outline-primary";
+      }
+      var targetPane = document.getElementById(tabId.replace('tab', 'paneTab'));
+      var targetBtn = document.getElementById(tabId.replace('tab', 'btnTab'));
+      if (targetPane) targetPane.classList.remove('d-none');
+      if (targetBtn) targetBtn.className = "btn btn-primary fw-bold";
+    }
+
+    function handleSaveSaldoAwal() {
+      startLoading();
+      var payload = {
+        "Kas Besar": parseFloat(document.getElementById("inpSaldoBesar").value) || 0,
+        "Kas Kecil A": parseFloat(document.getElementById("inpSaldoA").value) || 0,
+        "Kas Kecil B": parseFloat(document.getElementById("inpSaldoB").value) || 0,
+        "Kas Kecil C": 8000000,
+        "Kas Kecil D": 5000000
+      };
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); }).updateInitialBalances(payload);
+      } else {
+        db.saldo = { saldoBesar: payload["Kas Besar"], saldoKecilA: payload["Kas Kecil A"], saldoKecilB: payload["Kas Kecil B"], saldoKecilC: 8000000, saldoKecilD: 5000000 };
+        endLoading();
+        Swal.fire('Berhasil', 'Saldo awal diperbarui.', 'success');
+      }
+    }
+
+    function parseUploadedExcel(fileInputId, callback) {
+      var fileInput = document.getElementById(fileInputId);
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        Swal.fire('Perhatian', 'Pilih file terlebih dahulu.', 'warning');
+        return;
+      }
+      startLoading();
+      var file = fileInput.files[0];
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          var jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          callback(jsonData);
+        } catch(err) {
+          endLoading();
+          Swal.fire('Error', 'Gagal memproses file.', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function processUploadSOW() {
+      parseUploadedExcel("uploadSOWFile", function(items) {
+        var formatted = [];
+        for (var i = 0; i < items.length; i++) {
+          formatted.push({
+            id: items[i].ID_SOW || ("SOW-" + (db.sowList.length + i + 1)),
+            sow2: items[i].SOW_2 || "-", sow4: items[i].SOW_4_Activity || "-", itemCode: items[i].Item_Code || "-",
+            keterangan: "Upload", kategori: "OPEX", project: "All"
+          });
+        }
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); }).saveBulkMasterSOW(formatted);
+        } else {
+          db.sowList = db.sowList.concat(formatted);
+          endLoading();
+          Swal.fire('Berhasil', 'SOW berhasil diupload.', 'success');
+          loadPage('master_data');
+        }
+      });
+    }
+
+    function processUploadCostCatalog() {
+      parseUploadedExcel("uploadCostFile", function(items) {
+        var formatted = [];
+        for (var i = 0; i < items.length; i++) {
+          formatted.push({
+            id: items[i].ID_Catalog || ("CAT-" + (db.costCatalog.length + i + 1)),
+            costCategory: items[i].Cost_Category || "-", costDetail: items[i].Cost_Detail || "-",
+            tipe: "OPEX", keterangan: "-"
+          });
+        }
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); }).saveBulkCostCatalog(formatted);
+        } else {
+          db.costCatalog = db.costCatalog.concat(formatted);
+          endLoading();
+          Swal.fire('Berhasil', 'Cost Catalog berhasil diupload.', 'success');
+          loadPage('master_data');
+        }
+      });
+    }
+
+    function processUploadPO() {
+      parseUploadedExcel("uploadPOFile", function(items) {
+        var formatted = [];
+        for (var i = 0; i < items.length; i++) {
+          formatted.push({
+            poNumber: items[i].PO_Number || "-", poLine: items[i].PO_Line || "Line 1",
+            siteId: items[i].Site_ID || "-", budget: parseFloat(items[i].Nilai_PO_Line) || 0,
+            project: "Telco", picProject: "-"
+          });
+        }
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); }).saveBulkMasterPO(formatted);
+        } else {
+          db.poList = db.poList.concat(formatted);
+          endLoading();
+          Swal.fire('Berhasil', 'PO berhasil diupload.', 'success');
+          loadPage('master_data');
+        }
+      });
+    }
+
+    function processUploadLK() {
+      parseUploadedExcel("uploadLKFile", function(items) {
+        var formatted = [];
+        for (var i = 0; i < items.length; i++) {
+          formatted.push({
+            noRF: items[i].No_RF || ("FR-BULK-" + (i+1)), tgl: "01/09/2026", tglTransfer: "01/09/2026",
+            siteIds: items[i].Site_ID || "-", sow2: "-", sow4: "-", itemCode: "-",
+            kategori: "OPEX", costCategory: "Transport", costDetail: "-",
+            picPenerima: "User", debit: 0, credit: parseFloat(items[i].Credit) || 0,
+            totalNilai: parseFloat(items[i].Credit) || 0, sumberKas: "Kas Kecil A",
+            biayaTrf: 0, status: "Transferred", saldoKas: 0
+          });
+        }
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); loadPage('dashboard'); }).saveBulkLKTransactions(formatted);
+        } else {
+          db.list = formatted.concat(db.list);
+          endLoading();
+          Swal.fire('Berhasil', 'LK berhasil diupload.', 'success');
+          loadPage('dashboard');
+        }
+      });
+    }
+
+    function renderRFGeneralPage(container) {
+      if (!container) return;
+      var cats = db.costCategories || [];
+      var catHtml = '';
+      for (var i = 0; i < cats.length; i++) {
+        catHtml += '<option value="' + cats[i] + '">' + cats[i] + '</option>';
+      }
+
+      container.innerHTML = '<form onsubmit="handleRFGeneralSubmit(event)" class="d-flex flex-column gap-3 max-w-lg mx-auto">' +
+        '<div class="row g-2">' +
+        '<div class="col-6"><label class="form-label small mb-1">Kategori *</label><select id="genKategori" class="form-select form-select-sm"><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>' +
+        '<div class="col-6"><label class="form-label small mb-1">Nominal (Rp) *</label><input type="number" id="genNominal" min="1000" placeholder="1500000" required class="form-control form-control-sm fw-bold text-primary"></div>' +
+        '</div>' +
+        '<div class="row g-2">' +
+        '<div class="col-6"><label class="form-label small mb-1">Cost Category *</label><select id="genCostCategory" class="form-select form-select-sm">' + catHtml + '</select></div>' +
+        '<div class="col-6"><label class="form-label small mb-1">Cost Detail *</label><input type="text" id="genCostDetail" required placeholder="Pembelian ATK" class="form-control form-control-sm"></div>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-sm btn-primary fw-bold py-2"><i class="bi bi-send me-1"></i> Kirim Pengajuan Operasional</button>' +
+        '</form>';
+    }
+
+    function handleRFGeneralSubmit(e) {
+      e.preventDefault();
+      startLoading();
+      var payload = {
+        role: currentUser.role, email: currentUser.email, namaRequester: currentUser.nama, siteIds: ["-"],
+        totalNilai: parseFloat(document.getElementById("genNominal").value) || 0,
+        kategoriBiaya: document.getElementById("genKategori").value,
+        costCategory: document.getElementById("genCostCategory").value,
+        costDetail: document.getElementById("genCostDetail").value
+      };
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); loadPage('status_rf'); }).saveRequestForm(payload);
+      } else {
+        endLoading();
+        Swal.fire('Berhasil', 'Pengajuan operasional berhasil dikirim.', 'success');
+        loadPage('status_rf');
+      }
+    }
+
+    function renderRF2APCPage(container) {
+      if (!container) return;
+      container.innerHTML = '<form onsubmit="handleRF2Submit(event)" class="d-flex flex-column gap-3 max-w-lg mx-auto">' +
+        '<div class="alert alert-info py-2 px-3 mb-0 small"><i class="bi bi-safe me-1"></i> <b>Permohonan Top-Up Kas Kecil (RF2)</b></div>' +
+        '<div class="row g-2">' +
+        '<div class="col-6"><label class="form-label small mb-1">Kas Asal</label><input type="text" value="Kas Besar" readonly class="form-control form-control-sm bg-light"></div>' +
+        '<div class="col-6"><label class="form-label small mb-1">Kas Tujuan *</label><select id="rf2TargetVault" class="form-select form-select-sm"><option value="Kas Kecil A">Kas Kecil A</option><option value="Kas Kecil B">Kas Kecil B</option><option value="Kas Kecil C">Kas Kecil C</option><option value="Kas Kecil D">Kas Kecil D</option></select></div>' +
+        '</div>' +
+        '<div><label class="form-label small mb-1">Nominal Top-Up (Rp) *</label><input type="number" id="rf2Nilai" min="1000" placeholder="10000000" required class="form-control form-control-sm fw-bold text-primary"></div>' +
+        '<button type="submit" class="btn btn-sm btn-info text-dark fw-bold py-2"><i class="bi bi-send me-1"></i> Kirim Permohonan Isi Kas</button>' +
+        '</form>';
+    }
+
+    function handleRF2Submit(e) {
+      e.preventDefault();
+      startLoading();
+      var targetVault = document.getElementById("rf2TargetVault").value;
+      var nominal = parseFloat(document.getElementById("rf2Nilai").value) || 0;
+      var payload = {
+        role: "APC", email: currentUser.email, namaRequester: currentUser.nama, siteIds: ["PETTY-CASH"],
+        totalNilai: nominal, kategoriBiaya: "KAS", costCategory: "Kas Advance / Petty Cash",
+        costDetail: "Pengisian " + targetVault, targetVault: targetVault,
+        sowDetails: [{ sow2: "TOP-UP", sow4: "Pengisian " + targetVault, itemCode: "KAS-01" }]
+      };
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) { endLoading(); Swal.fire('Berhasil!', res, 'success'); loadAllData(); loadPage('status_rf'); }).saveRequestForm(payload);
+      } else {
+        endLoading();
+        Swal.fire('Berhasil', 'Permohonan top-up kas dikirim.', 'success');
+        loadPage('status_rf');
+      }
+    }
+
+    function showToast(icon, title) {
+      if (typeof Swal !== 'undefined' && Swal.mixin) {
+        Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1800 }).fire({ icon: icon, title: title });
+      }
+    }
+
+    function loadAllData() {
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        var envEl = document.getElementById("envBadgeText");
+        if (envEl) envEl.innerText = "Multi-Vault Engine (Live Connected)";
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res) {
+              if (res.saldo) db.saldo = res.saldo;
+              if (Array.isArray(res.poList)) db.poList = res.poList;
+              if (Array.isArray(res.sowList)) db.sowList = res.sowList;
+              if (Array.isArray(res.costCatalog)) db.costCatalog = res.costCatalog;
+              if (Array.isArray(res.costCategories)) db.costCategories = res.costCategories;
+              if (Array.isArray(res.list)) db.list = res.list;
+              if (Array.isArray(res.invoicesList)) db.invoicesList = res.invoicesList;
+              if (Array.isArray(res.usersList)) db.usersList = res.usersList;
+              if (Array.isArray(res.utangPiutangList)) db.utangPiutangList = res.utangPiutangList;
+
+              updateUserBadge();
+              renderNavMenu();
+              loadPage(currentPage);
+            }
+          })
+          .withFailureHandler(function(err) {
+            console.warn("Gagal mengambil data live:", err);
+          })
+          .getAllData();
+      }
+    }
+
+    // --- VIEW: KASBON KARYAWAN ---
+    function renderKasbonPage(container) {
+      if (!container) return;
+      var canManage = ['FA', 'APC', 'AS'].includes(currentUser.role);
+      var users = Array.isArray(db.usersList) && db.usersList.length > 0 ? db.usersList : [
+        { userId: 'USR-01', nama: 'Budi Santoso', email: 'budi.rpm@kubikmadani.co.id' },
+        { userId: 'USR-02', nama: 'Hendra Pratama', email: 'pm.telco@kubikmadani.co.id' },
+        { userId: 'USR-03', nama: 'Agus Ops', email: 'agus@kubikmadani.co.id' }
+      ];
+
+      var userOpts = '<option value="">-- Pilih Nama Karyawan & User ID --</option>';
+      for (var u = 0; u < users.length; u++) {
+        userOpts += '<option value="' + users[u].userId + '" data-nama="' + users[u].nama + '" data-email="' + users[u].email + '">' + 
+          users[u].nama + ' &bull; (' + users[u].userId + ')</option>';
+      }
+
+      var tenorOpts = '';
+      for (var t = 1; t <= 12; t++) {
+        tenorOpts += '<option value="' + t + '" ' + (t === 3 ? 'selected' : '') + '>' + t + ' Bulan (' + t + 'x Potong Gaji)</option>';
+      }
+
+      if (!db.kasbonList) db.kasbonList = [];
+      var list = db.kasbonList;
+
+      var rows = '';
+      for (var i = 0; i < list.length; i++) {
+        var ksb = list[i];
+        var badgeSt = (ksb.status === 'Lunas') ? 'bg-success' : 'bg-warning text-dark';
+        
+        var installmentButtons = '<div class="d-flex flex-wrap gap-1 mt-1">';
+        for (var c = 1; c <= ksb.tenorBulan; c++) {
+          var isPaid = c <= (ksb.cicilanKeTerakhir || 0);
+          if (isPaid) {
+            installmentButtons += '<span class="badge bg-success bg-opacity-75 text-white" style="font-size: 9.5px;"><i class="bi bi-check-circle"></i> C' + c + ' Lunas</span>';
+          } else if (canManage && (c === (ksb.cicilanKeTerakhir || 0) + 1)) {
+            installmentButtons += '<button onclick="payInstallment(\'' + ksb.id + '\', ' + c + ')" class="btn btn-xs btn-outline-primary py-0 px-1.5 fw-bold" style="font-size: 10px;" title="Bayar Cicilan ke-' + c + '">Bayar C' + c + '</button>';
+          } else {
+            installmentButtons += '<span class="badge bg-light text-muted border" style="font-size: 9.5px;">C' + c + '</span>';
+          }
+        }
+        installmentButtons += '</div>';
+
+        rows += '<tr>' +
+          '<td class="fw-bold text-primary">' + ksb.id + '</td>' +
+          '<td>' + ksb.tanggal + '</td>' +
+          '<td><b class="text-dark">' + ksb.namaKaryawan + '</b><br><small class="text-muted">' + ksb.userId + '</small></td>' +
+          '<td class="text-end fw-bold">Rp ' + Number(ksb.jumlahPinjaman).toLocaleString('id-ID') + '</td>' +
+          '<td class="text-center"><span class="badge bg-light text-dark border">' + ksb.tenorBulan + ' Bulan</span></td>' +
+          '<td class="text-end text-muted">Rp ' + Number(ksb.cicilanPerBulan).toLocaleString('id-ID') + '/bln</td>' +
+          '<td><span class="badge bg-primary bg-opacity-10 text-primary border">' + ksb.sumberKas + '</span></td>' +
+          '<td class="text-end text-danger fw-bold">Rp ' + Number(ksb.sisaPinjaman).toLocaleString('id-ID') + '</td>' +
+          '<td class="text-center"><span class="badge ' + badgeSt + '">' + ksb.status + '</span></td>' +
+          '<td>' + installmentButtons + '</td>' +
+          '</tr>';
+      }
+
+      var formCardHtml = canManage ? (
+        '<form onsubmit="handleKasbonSubmit(event)" class="card bg-light p-3 border-0 rounded-3 shadow-sm mb-3">' +
+          '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-cash-stack me-1"></i> Form Pengajuan & Pencairan Kasbon Karyawan</h6>' +
+          '<div class="row g-2 mb-2">' +
+            '<div class="col-12 col-sm-6">' +
+              '<label class="form-label small mb-1 fw-bold">Pilih Karyawan (Nama & ID) *</label>' +
+              '<select id="ksbUserSelector" required onchange="onKasbonUserChanged(this)" class="form-select form-select-sm fw-bold">' + userOpts + '</select>' +
+              '<input type="hidden" id="ksbNamaHidden"><input type="hidden" id="ksbEmailHidden">' +
+            '</div>' +
+            '<div class="col-6 col-sm-3">' +
+              '<label class="form-label small mb-1 fw-bold">Jumlah Pinjaman (Rp) *</label>' +
+              '<input type="number" id="ksbNominal" oninput="calcKasbonCicilan()" required min="50000" placeholder="Contoh: 1500000" class="form-control form-control-sm fw-bold text-primary">' +
+            '</div>' +
+            '<div class="col-6 col-sm-3">' +
+              '<label class="form-label small mb-1 fw-bold">Jumlah Tenor Cicilan *</label>' +
+              '<select id="ksbTenorSelector" onchange="calcKasbonCicilan()" class="form-select form-select-sm">' + tenorOpts + '</select>' +
+            '</div>' +
+          '</div>' +
+          '<div class="row g-2 mb-2">' +
+            '<div class="col-6 col-sm-4">' +
+              '<label class="form-label small mb-1 fw-bold">Ditransfer Dari Kas *</label>' +
+              '<select id="ksbVaultSelector" class="form-select form-select-sm fw-bold">' +
+                '<option value="Kas Kecil A">Kas Kecil A</option>' +
+                '<option value="Kas Kecil B">Kas Kecil B</option>' +
+                '<option value="Kas Kecil C">Kas Kecil C</option>' +
+                '<option value="Kas Kecil D">Kas Kecil D</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="col-6 col-sm-4">' +
+              '<label class="form-label small mb-1">Estimasi Potongan / Bulan</label>' +
+              '<input type="text" id="ksbCicilanDisplay" readonly value="Rp 0 / bulan" class="form-control form-control-sm bg-white fw-bold text-success">' +
+            '</div>' +
+            '<div class="col-12 col-sm-4">' +
+              '<label class="form-label small mb-1">Catatan / Keperluan</label>' +
+              '<input type="text" id="ksbCatatan" placeholder="Contoh: Kasbon darurat keluarga" class="form-control form-control-sm">' +
+            '</div>' +
+          '</div>' +
+          '<button type="submit" class="btn btn-sm btn-primary fw-bold py-1.5"><i class="bi bi-send-check me-1"></i> Cairkan Kasbon Karyawan</button>' +
+        '</form>'
+      ) : '<div class="alert alert-info py-2 px-3 small"><i class="bi bi-shield-lock me-1"></i> Mode Monitoring Kasbon Karyawan (View Only).</div>';
+
+      container.innerHTML = '<div class="d-flex flex-column gap-2">' +
+        formCardHtml +
+        '<div class="card border-0 shadow-sm rounded-3">' +
+          '<div class="card-header bg-light d-flex justify-content-between align-items-center py-2">' +
+            '<span class="fw-bold small text-dark"><i class="bi bi-journal-bookmark me-1"></i> RIWAYAT KASBON & TRACKING CICILAN GAJI</span>' +
+          '</div>' +
+          '<div class="table-responsive custom-scrollbar" style="max-height: 400px;">' +
+            '<table class="table table-sm table-hover text-nowrap align-middle mb-0" style="font-size: 11px;">' +
+              '<thead class="table-light sticky-top">' +
+                '<tr>' +
+                  '<th>ID Kasbon</th><th>Tanggal</th><th>Karyawan (ID)</th><th class="text-end">Pinjaman</th><th class="text-center">Tenor</th><th class="text-end">Cicilan/Bln</th><th>Kas Sumber</th><th class="text-end">Sisa Hutang</th><th class="text-center">Status</th><th>Tracking Cicilan Gaji (1 s/d 12)</th>' +
+                '</tr>' +
+              '</thead>' +
+              '<tbody>' + (rows || '<tr><td colspan="10" class="text-center py-4 text-muted">Belum ada riwayat kasbon.</td></tr>') + '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function onKasbonUserChanged(sel) {
+      var opt = sel.options[sel.selectedIndex];
+      if (opt) {
+        document.getElementById("ksbNamaHidden").value = opt.getAttribute("data-nama") || "";
+        document.getElementById("ksbEmailHidden").value = opt.getAttribute("data-email") || "";
+      }
+    }
+
+    function calcKasbonCicilan() {
+      var pinjaman = parseFloat(document.getElementById("ksbNominal").value) || 0;
+      var tenor = parseInt(document.getElementById("ksbTenorSelector").value, 10) || 1;
+      var perBulan = Math.round(pinjaman / tenor);
+      var displayEl = document.getElementById("ksbCicilanDisplay");
+      if (displayEl) {
+        displayEl.value = "Rp " + perBulan.toLocaleString('id-ID') + " / bulan";
+      }
+    }
+
+    function handleKasbonSubmit(e) {
+      e.preventDefault();
+      startLoading();
+
+      var sel = document.getElementById("ksbUserSelector");
+      var opt = sel.options[sel.selectedIndex];
+      var pinjaman = parseFloat(document.getElementById("ksbNominal").value) || 0;
+      var tenor = parseInt(document.getElementById("ksbTenorSelector").value, 10) || 1;
+
+      var payload = {
+        userId: sel.value,
+        namaKaryawan: opt ? opt.getAttribute("data-nama") : "Karyawan",
+        email: opt ? opt.getAttribute("data-email") : "-",
+        jumlahPinjaman: pinjaman,
+        tenorBulan: tenor,
+        sumberKas: document.getElementById("ksbVaultSelector").value,
+        catatan: document.getElementById("ksbCatatan").value.trim()
+      };
+
+      if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            endLoading();
+            Swal.fire('Berhasil!', res, 'success');
+            loadAllData();
+            loadPage('kasbon_karyawan');
+          })
+          .withFailureHandler(function(err) {
+            endLoading();
+            Swal.fire('Gagal!', err.message, 'error');
+          })
+          .saveKasbonEntry(payload);
+      } else {
+        endLoading();
+        var perBulan = Math.round(pinjaman / tenor);
+        db.kasbonList.unshift({
+          id: "KSB-2609-0" + (db.kasbonList.length + 1),
+          tanggal: "02/09/2026",
+          userId: payload.userId,
+          namaKaryawan: payload.namaKaryawan,
+          jumlahPinjaman: pinjaman,
+          tenorBulan: tenor,
+          cicilanPerBulan: perBulan,
+          sumberKas: payload.sumberKas,
+          sisaPinjaman: pinjaman,
+          cicilanKeTerakhir: 0,
+          status: "Belum Lunas"
+        });
+        Swal.fire('Berhasil', 'Kasbon berhasil dicatat dan dicairkan.', 'success');
+        loadPage('kasbon_karyawan');
+      }
+    }
+
+    function payInstallment(idKasbon, cicilanKe) {
+      Swal.fire({
+        title: 'Konfirmasi Bayar Cicilan ke-' + cicilanKe + '?',
+        text: 'Mencatat pemotongan cicilan gaji untuk kasbon ' + idKasbon,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Catat Bayar'
+      }).then(function(res) {
+        if (res.isConfirmed) {
+          startLoading();
+          if (typeof google !== "undefined" && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(function(msg) {
+                endLoading();
+                Swal.fire('Selesai', msg, 'success');
+                loadAllData();
+                loadPage('kasbon_karyawan');
+              })
+              .withFailureHandler(function(err) {
+                endLoading();
+                Swal.fire('Gagal', err.message, 'error');
+              })
+              .payKasbonInstallment(idKasbon, cicilanKe);
+          } else {
+            endLoading();
+            var item = null;
+            for (var i = 0; i < db.kasbonList.length; i++) {
+              if (db.kasbonList[i].id === idKasbon) { item = db.kasbonList[i]; break; }
+            }
+            if (item) {
+              item.cicilanKeTerakhir = cicilanKe;
+              item.sisaPinjaman = Math.max(0, item.sisaPinjaman - item.cicilanPerBulan);
+              if (item.sisaPinjaman <= 0 || cicilanKe >= item.tenorBulan) item.status = "Lunas";
+              else item.status = "Sebagian";
+            }
+            Swal.fire('Selesai', 'Cicilan ke-' + cicilanKe + ' berhasil dibayarkan.', 'success');
+            loadPage('kasbon_karyawan');
+          }
+        }
+      });
+    }
+    function togglePasswordVisibility() {
+  var passInput = document.getElementById("loginPasswordInput");
+  var icon = document.getElementById("togglePasswordIcon");
+  if (passInput.type === "password") {
+    passInput.type = "text";
+    icon.className = "bi bi-eye-slash";
+  } else {
+    passInput.type = "password";
+    icon.className = "bi bi-eye";
+  }
+}
+  </script>
+</body>
+</html>
